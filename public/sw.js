@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hidrometro-v1';
+const CACHE_NAME = 'hidrometro-v2';
 const STATIC_ASSETS = [
   '/',
   '/icon-192.png',
@@ -30,7 +30,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetched = fetch(request).then((response) => {
-        if (response.ok && request.url.startsWith('http')) {
+        if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
