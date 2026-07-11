@@ -25,7 +25,9 @@ export async function extractWithOCRSpace(
     throw new Error('OCR_SPACE_API_KEY não configurada ou inválida');
   }
 
-  const dataUri = `data:${mediaType || 'image/jpeg'};base64,${imageBase64}`;
+  const dataUri = imageBase64.startsWith('data:')
+    ? imageBase64
+    : `data:${mediaType || 'image/jpeg'};base64,${imageBase64}`;
 
   const formData = new URLSearchParams();
   formData.append('base64Image', dataUri);

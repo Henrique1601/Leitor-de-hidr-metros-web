@@ -41,9 +41,13 @@ export async function extractWithGemini(
 
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
+  const rawBase64 = imageBase64.startsWith('data:')
+    ? imageBase64.split(',')[1] || ''
+    : imageBase64;
+
   const imagePart = {
     inlineData: {
-      data: imageBase64,
+      data: rawBase64,
       mimeType: mediaType || 'image/jpeg',
     },
   };

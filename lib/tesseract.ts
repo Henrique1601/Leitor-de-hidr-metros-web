@@ -19,7 +19,10 @@ export async function extractWithTesseract(
   mediaType: string,
   apartamentos: string[]
 ): Promise<{ medidores: MedidorRead[]; fallback: boolean }> {
-  const buffer = Buffer.from(imageBase64, 'base64');
+  const rawBase64 = imageBase64.startsWith('data:')
+    ? imageBase64.split(',')[1] || ''
+    : imageBase64;
+  const buffer = Buffer.from(rawBase64, 'base64');
 
   const worker = await Tesseract.createWorker('eng');
 
