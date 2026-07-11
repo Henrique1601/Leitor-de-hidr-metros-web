@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractWithGemini } from "@/lib/gemini";
+import { extractWithTesseract } from "@/lib/tesseract";
 
 export const runtime = "nodejs";
 
@@ -16,32 +17,40 @@ export async function POST(req: NextRequest) {
 
     const apts: string[] = apartamentos ?? [];
 
-    let result: { medidores: any[] };
-
     try {
-      result = await extractWithGemini(imageBase64, mediaType, apts);
+      const result = await extractWithGemini(imageBase64, mediaType, apts);
+      return NextResponse.json({
+        arquivo,
+        apartamentosEsperados: apts,
+        medidores: result.medidores,
+        fallback: false,
+      });
     } catch (geminiError: any) {
-      const msg = geminiError?.message || "falha desconhecida";
-      const isQuota = msg.includes("429") || msg.includes("quota");
-      return NextResponse.json(
-        {
+      console.warn(`Gemini falhou para ${arquivo}, tentando Tesseract fallback...`);
+      try {
+        const fallbackResult = await extractWithTesseract(imageBase64, mediaType, apts);
+        return NextResponse.json({
           arquivo,
           apartamentosEsperados: apts,
-          medidores: [],
-          erro: isQuota
-            ? "Cota do Gemini esgotada. Aguarde alguns minutos e tente novamente."
-            : `Erro Gemini: ${msg}`,
-        },
-        { status: 500 },
-      );
+          medidores: fallbackResult.medidores,
+          fallback: true,
+        });
+      } catch (tesseractError: any) {
+        const msg = geminiError?.message || "falha desconhecida";
+        const isQuota = msg.includes("429") || msg.includes("quota");
+        return NextResponse.json(
+          {
+            arquivo,
+            apartamentosEsperados: apts,
+            medidores: [],
+            erro: isQuota
+              ? "Cota do Gemini esgotada e OCR fallback também falhou."
+              : `Erro Gemini: ${msg} | OCR fallback: ${tesseractError?.message || "falha"}`,
+          },
+          { status: 500 },
+        );
+      }
     }
-
-    return NextResponse.json({
-      arquivo,
-      apartamentosEsperados: apts,
-      medidores: result.medidores,
-      fallback: false,
-    });
   } catch (err: any) {
     return NextResponse.json(
       { erro: err?.message || "falha desconhecida" },

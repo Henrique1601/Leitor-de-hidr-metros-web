@@ -1,11 +1,20 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { parseChat, PhotoIndexRow } from '@/lib/parseChat';
 import { groupByApartment, ExtractResult } from '@/lib/results';
+import { getCachedResult, setCachedResult } from '@/lib/cache';
+import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
+import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, HistoryEntry } from '@/lib/history';
+import InputPanel from '@/components/InputPanel';
+import ProgressBar from '@/components/ProgressBar';
+import SkeletonLoading from '@/components/SkeletonLoading';
+import ResultsTable from '@/components/ResultsTable';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { useTheme } from '@/components/ThemeProvider';
 
-const CONCURRENCY = 4;
+const CONCURRENCY = 3;
 const MAX_DIM = 1600;
 
 function compressImage(file: File): Promise<{ base64: string; mediaType: string }> {
@@ -20,15 +29,42 @@ function compressImage(file: File): Promise<{ base64: string; mediaType: string 
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return reject(new Error('canvas indisponível'));
+      if (!ctx) return reject(new Error('canvas indisponivel'));
       ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
     };
-    img.onerror = reject;
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('falha ao carregar imagem'));
+    };
     img.src = url;
   });
+}
+
+function playDoneSound() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch {
+    // silent
+  }
+}
+
+function fileToKey(f: File): string {
+  return f.name + '__' + f.size;
 }
 
 export default function Home() {
@@ -40,9 +76,95 @@ export default function Home() {
   const [done, setDone] = useState(0);
   const [total, setTotal] = useState(0);
   const [results, setResults] = useState<ExtractResult[]>([]);
+  const [editingCell, setEditingCell] = useState<{ apt: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [historyLabel, setHistoryLabel] = useState('');
   const cancelRef = useRef(false);
+  const photoMapRef = useRef<Map<string, File>>(new Map());
+  const { theme, toggle } = useTheme();
 
-  const groupedRows = useMemo(() => groupByApartment(results), [results]);
+  useEffect(() => {
+    setHistory(getHistory());
+  }, []);
+
+  const previousIndices = useMemo(() => {
+    if (!selectedHistoryId) return undefined;
+    return getPreviousIndices(selectedHistoryId) ?? undefined;
+  }, [selectedHistoryId]);
+
+  const groupedRows = useMemo(() => groupByApartment(results, previousIndices), [results, previousIndices]);
+
+  const photoPreviewMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of photoFiles) {
+      m.set(fileToKey(f), URL.createObjectURL(f));
+    }
+    return m;
+  }, [photoFiles]);
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const items = Array.from(e.dataTransfer.items);
+    const files: File[] = [];
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.();
+      if (entry) {
+        readEntryRecursive(entry, files);
+      } else {
+        const f = item.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    setTimeout(() => classifyFiles(files), 0);
+  }
+
+  function readEntryRecursive(entry: FileSystemEntry, acc: File[]) {
+    if (entry.isFile) {
+      (entry as FileSystemFileEntry).file((f) => acc.push(f));
+    } else if (entry.isDirectory) {
+      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      reader.readEntries((entries) => {
+        for (const e of entries) readEntryRecursive(e, acc);
+      });
+    }
+  }
+
+  function classifyFiles(files: File[]) {
+    const txt = files.find((f) => f.name.endsWith('.txt'));
+    const images = files.filter((f) => f.type.startsWith('image/'));
+    if (txt) setChatFile(txt);
+    if (images.length > 0) {
+      setPhotoFiles((prev) => {
+        const existing = new Set(prev.map(fileToKey));
+        const merged = [...prev];
+        for (const img of images) {
+          if (!existing.has(fileToKey(img))) merged.push(img);
+        }
+        return merged;
+      });
+    }
+  }
+
+  function handleCancel() {
+    cancelRef.current = true;
+  }
 
   async function handleProcess() {
     if (!chatFile || photoFiles.length === 0) return;
@@ -53,8 +175,8 @@ export default function Home() {
 
     const chatText = await chatFile.text();
     const index: PhotoIndexRow[] = parseChat(chatText, dateStart || undefined, dateEnd || undefined);
-    const photoMap = new Map(photoFiles.map((f) => [f.name, f]));
-    const workload = index.filter((row) => photoMap.has(row.arquivo));
+    photoMapRef.current = new Map(photoFiles.map((f) => [f.name, f]));
+    const workload = index.filter((row) => photoMapRef.current.has(row.arquivo));
     setTotal(workload.length);
 
     let cursor = 0;
@@ -70,18 +192,23 @@ export default function Home() {
           setDone((d) => d + 1);
           continue;
         }
-        const file = photoMap.get(row.arquivo)!;
+        const file = photoMapRef.current.get(row.arquivo)!;
+        const cached = await getCachedResult(file);
+        if (cached) {
+          setResults((prev) => [
+            ...prev,
+            { arquivo: cached.arquivo, apartamentosEsperados: cached.apartamentosEsperados, medidores: cached.medidores },
+          ]);
+          setDone((d) => d + 1);
+          continue;
+        }
+        await acquireSlot();
         try {
           const { base64, mediaType } = await compressImage(file);
           const resp = await fetch('/api/extract', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              arquivo: row.arquivo,
-              apartamentos: row.apartamentos,
-              imageBase64: base64,
-              mediaType,
-            }),
+            body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
           });
           const data = await resp.json();
           if (!resp.ok) {
@@ -90,6 +217,11 @@ export default function Home() {
               { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: data.erro },
             ]);
           } else {
+            await setCachedResult(file, {
+              arquivo: data.arquivo,
+              apartamentosEsperados: data.apartamentosEsperados,
+              medidores: data.medidores,
+            });
             setResults((prev) => [...prev, data]);
           }
         } catch (e: any) {
@@ -97,6 +229,8 @@ export default function Home() {
             ...prev,
             { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: e?.message },
           ]);
+        } finally {
+          releaseSlot();
         }
         setDone((d) => d + 1);
       }
@@ -104,128 +238,187 @@ export default function Home() {
 
     await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
     setProcessing(false);
+    if (!cancelRef.current) {
+      playDoneSound();
+    }
+  }
+
+  function handleSaveHistory() {
+    if (groupedRows.length === 0) return;
+    const label = historyLabel.trim() || new Date().toLocaleDateString('pt-BR');
+    saveToHistory(label, groupedRows);
+    setHistory(getHistory());
+    setHistoryLabel('');
+  }
+
+  function handleDeleteHistory(id: string) {
+    deleteFromHistory(id);
+    setHistory(getHistory());
+    if (selectedHistoryId === id) {
+      setSelectedHistoryId(null);
+    }
+  }
+
+  function handleEdit(apt: string, field: string, currentValue: string) {
+    setEditingCell({ apt, field });
+    setEditValue(currentValue);
+  }
+
+  function commitEdit() {
+    if (!editingCell) return;
+    setResults((prev) => {
+      const updated = prev.map((r) => {
+        if (!r.apartamentosEsperados.includes(editingCell.apt)) return r;
+        const idx = r.apartamentosEsperados.indexOf(editingCell.apt);
+        if (!r.medidores[idx]) return r;
+        const parts = editValue.split(',');
+        return {
+          ...r,
+          medidores: r.medidores.map((m, i) =>
+            i === idx
+              ? {
+                  ...m,
+                  indiceInteiro: parts[0] || editValue,
+                  indiceDecimal: parts[1] || '',
+                  confianca: 'alta' as const,
+                  observacao: 'Corrigido manualmente',
+                }
+              : m
+          ),
+        };
+      });
+      return updated;
+    });
+    setEditingCell(null);
   }
 
   function handleExport() {
     const rows = groupedRows.map((r) => ({
       Apartamento: r.apartamento,
-      Índice: r.indice,
-      Confiança: r.confianca,
-      Observação: r.observacao,
+      Indice: r.indice,
+      Consumo: r.consumo,
+      Confianca: r.confianca,
+      Observacao: r.observacao,
       'Arquivo(s)': r.arquivos,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 45 }];
+    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 45 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leituras');
-    XLSX.writeFile(wb, `leituras_hidrometros_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }
 
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const reviewCount = groupedRows.filter(
-    (r) => r.confianca === 'baixa' || r.observacao.includes('DIVERGÊNCIA')
-  ).length;
-
   return (
-    <main className="shell">
-      <div className="hero">
-        <span className="hero-mark" />
-        <h1>Leitor de Hidrômetros</h1>
-      </div>
-      <p className="subtitle">Fotos do WhatsApp → índice de cada apartamento → planilha, sem digitar nada na mão.</p>
+    <ErrorBoundary>
+      <button className="theme-toggle" onClick={toggle} title="Alternar tema">
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+      <main
+        className={'shell' + (dragOver ? ' drag-active' : '')}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {dragOver && <div className="drag-overlay">Solte os arquivos aqui</div>}
 
-      <section className="panel">
-        <div className="panel-title">Entrada</div>
-        <div className="row" style={{ marginBottom: 16 }}>
-          <div className="dropzone">
-            <div>
-              <label>Conversa exportada (.txt, com mídia)</label>
-              <div className="hint">{chatFile ? chatFile.name : 'Nenhum arquivo selecionado'}</div>
+        <div className="hero">
+          <span className="hero-mark" />
+          <h1>Leitor de Hidrometros</h1>
+        </div>
+        <p className="subtitle">Fotos do WhatsApp - indice de cada apartamento - planilha, sem digitar nada na mao.</p>
+
+        <InputPanel
+          chatFile={chatFile}
+          photoFiles={photoFiles}
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+          processing={processing}
+          onChatFileChange={setChatFile}
+          onPhotoFilesChange={setPhotoFiles}
+          onDateStartChange={setDateStart}
+          onDateEndChange={setDateEnd}
+          onProcess={handleProcess}
+          onCancel={handleCancel}
+        />
+
+        {processing && total === 0 && <SkeletonLoading />}
+
+        {(processing || total > 0) && <ProgressBar done={done} total={total} />}
+
+        {groupedRows.length > 0 && (
+          <ResultsTable
+            groupedRows={groupedRows}
+            photoPreviewMap={photoPreviewMap}
+            editingCell={editingCell}
+            editValue={editValue}
+            onEdit={handleEdit}
+            onEditValueChange={setEditValue}
+            onCommitEdit={commitEdit}
+            onCancelEdit={() => setEditingCell(null)}
+            onExport={handleExport}
+          />
+        )}
+
+        {groupedRows.length > 0 && (
+          <section className="panel">
+            <div className="panel-title">Historico</div>
+            <div className="history-save">
+              <input
+                type="text"
+                className="inline-edit"
+                placeholder="Label (ex: Julho 2026)"
+                value={historyLabel}
+                onChange={(e) => setHistoryLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveHistory();
+                }}
+                style={{ flex: 1 }}
+              />
+              <button className="secondary" onClick={handleSaveHistory}>
+                Salvar no historico
+              </button>
             </div>
-            <input type="file" accept=".txt" onChange={(e) => setChatFile(e.target.files?.[0] ?? null)} />
-          </div>
-        </div>
-        <div className="row" style={{ marginBottom: 16 }}>
-          <div className="dropzone">
-            <div>
-              <label>Pasta de fotos</label>
-              <div className="hint">{photoFiles.length ? `${photoFiles.length} arquivo(s)` : 'Nenhuma pasta selecionada'}</div>
-            </div>
-            <input
-              type="file"
-              multiple
-              // @ts-ignore - atributo não tipado, mas suportado pelos navegadores
-              webkitdirectory=""
-              onChange={(e) => setPhotoFiles(Array.from(e.target.files ?? []))}
-            />
-          </div>
-        </div>
-        <div className="row" style={{ marginBottom: 20 }}>
-          <div className="field">
-            <label>Data inicial (opcional)</label>
-            <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Data final (opcional)</label>
-            <input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-          </div>
-        </div>
-        <button className="primary" onClick={handleProcess} disabled={!chatFile || photoFiles.length === 0 || processing}>
-          {processing ? 'Processando…' : 'Processar fotos'}
-        </button>
-      </section>
-
-      {(processing || total > 0) && (
-        <section className="panel">
-          <div className="panel-title">Progresso</div>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="progress-label">
-            <span>{done} de {total} fotos</span>
-            <span>{pct}%</span>
-          </div>
-        </section>
-      )}
-
-      {groupedRows.length > 0 && (
-        <section className="panel">
-          <div className="panel-title">Resultado por apartamento</div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Apê</th>
-                  <th>Índice</th>
-                  <th>Confiança</th>
-                  <th>Observação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupedRows.map((r) => {
-                  const rowClass = r.observacao.includes('DIVERGÊNCIA') || r.confianca === 'baixa' && r.observacao.includes('não foi possível')
-                    ? 'danger'
-                    : r.confianca === 'baixa' || r.confianca === 'media'
-                    ? 'low'
-                    : '';
+            {history.length > 0 && (
+              <div className="history-list">
+                <div className="history-item header">
+                  <span>Periodo</span>
+                  <span>Data</span>
+                  <span>Apts</span>
+                  <span></span>
+                </div>
+                {history.map((entry) => {
+                  const date = new Date(entry.date).toLocaleDateString('pt-BR');
+                  const isSelected = selectedHistoryId === entry.id;
                   return (
-                    <tr key={r.apartamento} className={rowClass}>
-                      <td className="mono">{r.apartamento}</td>
-                      <td className="mono">{r.indice || '—'}</td>
-                      <td><span className={`badge ${r.confianca.toLowerCase()}`}>{r.confianca}</span></td>
-                      <td>{r.observacao || '—'}</td>
-                    </tr>
+                    <div
+                      key={entry.id}
+                      className={'history-item' + (isSelected ? ' selected' : '')}
+                      onClick={() => setSelectedHistoryId(isSelected ? null : entry.id)}
+                    >
+                      <span className="mono">{entry.label}</span>
+                      <span className="history-date">{date}</span>
+                      <span>{entry.rows.length}</span>
+                      <button
+                        className="history-delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteHistory(entry.id);
+                        }}
+                        title="Remover"
+                      >
+                        ×
+                      </button>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-          <div className="footer-actions">
-            <span className="stat"><strong>{groupedRows.length}</strong> apartamentos · <strong>{reviewCount}</strong> para revisar</span>
-            <button className="secondary" onClick={handleExport}>Exportar XLSX</button>
-          </div>
-        </section>
-      )}
-    </main>
+              </div>
+            )}
+            {selectedHistoryId && (
+              <div className="history-hint">Consumo calculado em relacao ao periodo selecionado acima</div>
+            )}
+          </section>
+        )}
+      </main>
+    </ErrorBoundary>
   );
 }

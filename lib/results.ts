@@ -17,6 +17,7 @@ export interface ExtractResult {
 export interface GroupedRow {
   apartamento: string;
   indice: string;
+  consumo: string;
   confianca: string;
   observacao: string;
   arquivos: string;
@@ -28,7 +29,7 @@ function aptSortKey(apt: string): [number, number, string] {
   return [1, 0, apt];
 }
 
-export function groupByApartment(results: ExtractResult[]): GroupedRow[] {
+export function groupByApartment(results: ExtractResult[], previousIndices?: Map<string, string>): GroupedRow[] {
   const byApt = new Map<
     string,
     { arquivo: string; indice: string | null; confianca: string; observacao: string }[]
@@ -61,7 +62,7 @@ export function groupByApartment(results: ExtractResult[]): GroupedRow[] {
 
   const rows: GroupedRow[] = [];
   for (const apt of semAcesso) {
-    rows.push({ apartamento: apt, indice: '', confianca: 'N/A', observacao: 'Sem acesso ao hidrômetro', arquivos: '' });
+    rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'N/A', observacao: 'Sem acesso ao hidrômetro', arquivos: '' });
   }
 
   for (const [apt, leituras] of byApt.entries()) {
@@ -73,18 +74,20 @@ export function groupByApartment(results: ExtractResult[]): GroupedRow[] {
       const conf = confs.every((c) => c === 'alta') ? 'alta' : confs.length ? 'media' : 'baixa';
       let obs = Array.from(new Set(leituras.map((l) => l.observacao).filter(Boolean))).join('; ');
       if (leituras.length > 1) obs = (obs ? obs + '; ' : '') + `confirmado em ${leituras.length} foto(s)`;
-      rows.push({ apartamento: apt, indice, confianca: conf, observacao: obs, arquivos });
+      const consumo = calcularConsumo(apt, indice, previousIndices);
+      rows.push({ apartamento: apt, indice, consumo, confianca: conf, observacao: obs, arquivos });
     } else if (valores.size > 1) {
       rows.push({
         apartamento: apt,
         indice: Array.from(valores).join(' / '),
+        consumo: '',
         confianca: 'baixa',
         observacao: 'DIVERGÊNCIA entre fotos - revisar manualmente',
         arquivos,
       });
     } else {
       const obs = Array.from(new Set(leituras.map((l) => l.observacao).filter(Boolean))).join('; ');
-      rows.push({ apartamento: apt, indice: '', confianca: 'baixa', observacao: obs || 'não foi possível ler', arquivos });
+      rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'baixa', observacao: obs || 'não foi possível ler', arquivos });
     }
   }
 
@@ -97,4 +100,24 @@ export function groupByApartment(results: ExtractResult[]): GroupedRow[] {
   });
 
   return rows;
+}
+
+function parseIndice(indice: string): number | null {
+  const cleaned = indice.replace(/[^\d,\.]/g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
+function calcularConsumo(apt: string, indiceAtual: string, previousIndices?: Map<string, string>): string {
+  if (!previousIndices) return '';
+  const anterior = previousIndices.get(apt);
+  if (!anterior) return '';
+
+  const atual = parseIndice(indiceAtual);
+  const prev = parseIndice(anterior);
+  if (atual === null || prev === null) return '';
+
+  const consumo = atual - prev;
+  if (consumo < 0) return `⚠ ${consumo.toFixed(0)}`;
+  return consumo.toFixed(0);
 }
