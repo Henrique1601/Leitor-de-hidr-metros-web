@@ -1,4 +1,3 @@
-import path from 'path';
 import Tesseract from 'tesseract.js';
 import type { MedidorRead } from './gemini';
 
@@ -15,11 +14,6 @@ function calculateConfidence(numbers: string[]): 'alta' | 'media' | 'baixa' {
   return 'baixa';
 }
 
-function resolveLocalPath(relativePath: string): string {
-  const pkgDir = path.dirname(require.resolve('tesseract.js/package.json'));
-  return path.join(pkgDir, relativePath);
-}
-
 export async function extractWithTesseract(
   imageBase64: string,
   mediaType: string,
@@ -27,11 +21,7 @@ export async function extractWithTesseract(
 ): Promise<{ medidores: MedidorRead[]; fallback: boolean }> {
   const buffer = Buffer.from(imageBase64, 'base64');
 
-  const worker = await Tesseract.createWorker('eng', undefined, {
-    workerPath: resolveLocalPath('dist/worker.min.js'),
-    corePath: resolveLocalPath('dist/tesseract-core-simd.wasm.js'),
-    langPath: resolveLocalPath('dist'),
-  });
+  const worker = await Tesseract.createWorker('eng');
 
   try {
     const { data } = await worker.recognize(buffer);

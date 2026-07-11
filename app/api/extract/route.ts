@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
         fallback: false,
       });
     } catch (geminiError: any) {
-      console.warn(`Gemini falhou para ${arquivo}, tentando Tesseract fallback...`);
+      console.warn(`Gemini falhou para ${arquivo}: ${geminiError?.message}`);
+      console.warn(`Tentando Tesseract fallback...`);
       try {
         const fallbackResult = await extractWithTesseract(imageBase64, mediaType, apts);
         return NextResponse.json({
@@ -36,16 +37,18 @@ export async function POST(req: NextRequest) {
           fallback: true,
         });
       } catch (tesseractError: any) {
-        const msg = geminiError?.message || "falha desconhecida";
-        const isQuota = msg.includes("429") || msg.includes("quota");
+        console.error(`Tesseract falhou para ${arquivo}: ${tesseractError?.message}`);
+        const geminiMsg = geminiError?.message || "falha desconhecida";
+        const tessMsg = tesseractError?.message || "falha desconhecida";
+        const isQuota = geminiMsg.includes("429") || geminiMsg.includes("quota") || geminiMsg.includes("RESOURCE_EXHAUSTED");
         return NextResponse.json(
           {
             arquivo,
             apartamentosEsperados: apts,
             medidores: [],
             erro: isQuota
-              ? "Cota do Gemini esgotada e OCR fallback também falhou."
-              : `Erro Gemini: ${msg} | OCR fallback: ${tesseractError?.message || "falha"}`,
+              ? `Cota do Gemini esgotada. OCR fallback tambem falhou: ${tessMsg}`
+              : `Gemini: ${geminiMsg} | OCR: ${tessMsg}`,
           },
           { status: 500 },
         );
