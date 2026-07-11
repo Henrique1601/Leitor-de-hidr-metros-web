@@ -15,7 +15,7 @@ status: active
 # Leitor de Hidrômetros
 
 > [!info] Resumo
-> Site em **Next.js 14** (App Router) que lê fotos de hidrômetros enviadas via WhatsApp, usa a API de visão do **Google Gemini** para extrair os índices automaticamente, e gera uma planilha Excel — tudo no navegador.
+> Site em **Next.js 14** (App Router) que lê fotos de hidrômetros enviadas via WhatsApp, usa **OCR.space** (gratuito) para extrair os índices automaticamente, e gera planilhas — tudo no navegador. Deploy no **Railway**.
 
 ## Fluxo de Trabalho
 
@@ -23,9 +23,11 @@ status: active
 graph LR
     A[Exportar WhatsApp] --> B[Selecionar .txt + fotos]
     B --> C[Processar fotos]
-    C --> D[Gemini extrai índices]
+    C --> D[OCR Cascade]
     D --> E[Tabela ao vivo]
-    E --> F[Exportar XLSX]
+    E --> F[Exportar XLSX/PDF/CSV]
+    E --> G[Dashboard gráficos]
+    E --> H[Link compartilhável]
 ```
 
 ## Arquitetura
@@ -34,163 +36,215 @@ graph LR
 |--------|------------|---------|
 | Frontend | React 18 + Next.js 14 App Router | `app/page.tsx` |
 | API | Route Handlers (Node.js) | `app/api/extract/route.ts` |
-| Parse | TypeScript puro | `lib/parseChat.ts` |
-| Agrupamento | TypeScript puro | `lib/results.ts` |
-| IA | Google Gemini 2.0 Flash | `lib/gemini.ts` |
-| OCR Fallback | Tesseract.js | `lib/tesseract.ts` |
-| Planilha | SheetJS (xlsx) | `package.json` |
+| Parser | TypeScript puro | `lib/parseChat.ts` |
+| OCR Principal | OCR.space (25k req/mês grátis) | `lib/ocrspace.ts` |
+| OCR Reserva | Google Gemini (requer billing) | `lib/gemini.ts` |
+| OCR Fallback | Tesseract.js (local WASM) | `lib/tesseract.ts` |
+| Dashboard | Recharts 3 | `components/Dashboard.tsx` |
+| Export | SheetJS + jsPDF | `lib/exportPdf.ts` |
+| Cache | IndexedDB | `lib/cache.ts` |
+| Deploy | Railway | `.github/workflows/ci.yml` |
 
-## Funcionalidades Principais
+## Funcionalidades Implementadas
 
-- **Importação**: Seleciona arquivo `.txt` exportado do WhatsApp + pasta de fotos
-- **Filtros por data**: Intervalo opcional de datas para processar lotes específicos
-- **Compressão automática**: Fotos redimensionadas para máx. 1600px (JPEG 85%)
-- **Processamento paralelo**: 4 fotos simultâneas (configurável via `CONCURRENCY`)
-- **Progresso ao vivo**: Barra de progresso com contagem de fotos processadas
-- **Tabela por apartamento**: Índice, confiança (alta/média/baixa) e observações
-- **Exportação XLSX**: Planilha formatada com colunas para Apartamento, Índice, Confiança, Observação e Arquivo(s)
+### Entrada de Dados
+- [x] **Chat parser multi-plataforma** — WhatsApp, Telegram, iMessage com detecção automática
+- [x] **Drag & drop** — Arquivo `.txt` + pasta de fotos
+- [x] **Filtro por data** — Intervalo de dias antes de processar
+- [x] **Preview de fotos** — Thumbnail ao passar mouse
 
-## Estrutura de Arquivos
+### OCR Cascade
+- [x] **OCR.space** — API gratuita (25k req/més), alta precisão
+- [x] **Gemini AI** — Google Vision (requer billing habilitado)
+- [x] **Tesseract.js** — Fallback local, funciona offline
+- [x] **Remoção de prefixo data URI** — Compatibilidade entre módulos
 
-```
-hidrometro-app-web/
-├── app/
-│   ├── layout.tsx          # Layout raíz (fontes: Space Grotesk, IBM Plex Mono, Inter)
-│   ├── page.tsx            # Página principal (componente client)
-│   ├── globals.css         # Estilos globais
-│   └── api/extract/
-│       └── route.ts        # API de extração (Gemini)
-├── lib/
-│   ├── parseChat.ts        # Parser do export WhatsApp
-│   ├── results.ts          # Agrupamento por apartamento
-│   ├── gemini.ts           # Service Google Gemini
-│   └── tesseract.ts        # Service Tesseract.js (fallback)
-├── package.json            # Dependências
-└── next.config.mjs         # Configuração Next.js
-```
+### Processamento
+- [x] **Compressão inteligente** — 1600px, JPEG 85% antes de enviar
+- [x] **Concorrência controlada** — 3 fotos simultâneas, 600ms delay
+- [x] **Cache IndexedDB** — Fotos já processadas não reenviadas
+- [x] **Cancelamento** — Interrompa a qualquer momento
+- [x] **Retry automático** — Backoff em caso de quota/rate limit
+- [x] **Notificação de quota** — Alerta quando API atinge limite
 
-## Configuração
+### Resultados
+- [x] **Edição inline** — Corrigir índices na tabela
+- [x] **Cálculo de consumo** — Subtrair índice anterior do atual
+- [x] **Agrupamento por apartamento** — Detecta divergências
+- [x] **Cores de confiança** — Verde/alta, Amarelo/média, Vermelho/baixa
+- [x] **Skeleton loading** — Animação enquanto processa
 
-> [!warning] Variável de Ambiente
-> É necessário configurar `GEMINI_API_KEY` em `.env.local` (obtida em [aistudio.google.com](https://aistudio.google.com/apikey))
+### Exportação
+- [x] **XLSX** — Planilha Excel formatada
+- [x] **PDF** — Relatório com jsPDF + auto-tabela
+- [x] **CSV** — UTF-8 BOM para Excel
+- [x] **Link compartilhável** — URL encriptada com base64
 
-```bash
-npm install
-cp .env.example .env.local
-# Editar .env.local com sua chave API do Gemini
-npm run dev
-```
+### Dashboard
+- [x] **Gráfico de barras** — Consumo por apartamento
+- [x] **Gráfico de pizza** — Distribuição de confiança
+- [x] **Evolução multi-período** — Comparar consumo entre meses
+- [x] **Toggle por apartamento** — Selecionar quais mostrar
 
-## API de Extração
+### UX/UI
+- [x] **Tema dark/light** — Detecção automática do sistema
+- [x] **PWA offline** — Service Worker para assets estáticos
+- [x] **Responsivo** — Desktop, tablet e mobile
+- [x] **Acessibilidade** — ARIA labels, keyboard nav, focus-visible
+- [x] **Error boundary** — Tratamento de erros elegante
+- [x] **Notificação sonora** — Alerta ao terminar
 
-A API em `app/api/extract/route.ts`:
-
-- Recebe: arquivo, apartamentos esperados, imagem em base64, mediaType
-- Envia para Gemini com prompt que instru leitura de hidrômetros
-- Retorna: JSON com medidores (posição, índice inteiro, decimal, confiança, observação)
-- Modelo: `gemini-2.0-flash`
-- Retry automático: 3 tentativas com delay de 10s em caso de quota
-
-## Parse do Chat WhatsApp
-
-O parser em `lib/parseChat.ts`:
-
-- Extrai anexos de imagem do formato WhatsApp (`IMG-YYYYMMDD-WAXXXX.jpg`)
-- Identifica apartamentos em legendas (regex: `\b(\d{1,4}[A-Za-z]{1,2}|[A-Za-z]{1,2}\d{1,4})\b`)
-- Detecta flags: `sem_acesso`, `sem_legenda`, `formato_inesperado`, `mais_de_2_no_mesmo_bloco`
-- Herda legendas da foto anterior quando ausente
-
-## Agrupamento por Apartamento
-
-O módulo em `lib/results.ts`:
-
-- Agrupa leituras por apartamento
-- Detecta divergências entre fotos do mesmo apê (destaque vermelho)
-- Marca confiança baseada na consistência entre leituras
-- Ordena por número do apartamento
-
-## Cores na Tabela
-
-| Cor | Significado |
-|-----|-------------|
-| Sem cor | Confiança alta, leitura consistente |
-| Amarelo (`low`) | Confiança média ou baixa - vale conferir |
-| Vermelho (`danger`) | Divergência entre fotos ou falha de leitura - revisão manual |
-
-## Deploy
-
-### Vercel (Recomendado)
-
-1. Subir repositório no GitHub
-2. Importar na Vercel
-3. Configurar `GEMINI_API_KEY` em Environment Variables
-4. Deploy automático
-
-### Local
-
-```bash
-npm run build
-npm start
-```
-
-## Notas Técnicas
-
-> [!tip] Otimizações
-> - Fotos comprimidas antes do envio (economiza tokens e custo da API)
-> - Processamento paralelo para agilizar lotes grandes
-> - Sem banco de dados - tudo processado no navegador
-> - Retry automático com backoff em caso de rate limit
-
-> [!caution] Limitações
-> - Se a aba for fechada, o processamento é perdido
-> - Para lotes > 1000 fotos, usar filtros de data
-> - Quota gratuita do Gemini: 15 requests/minuto
-> - Vercel free tier: timeout de 10 segundos por request
-
-## Dependências
-
-- **@google/generative-ai** ^0.24.0 - SDK Google Gemini
-- **tesseract.js** ^5.1.1 - OCR como fallback
-- **next** 14.2.35 - Framework React
-- **react** ^18.3.1 - UI Library
-- **xlsx** ^0.18.5 - SheetJS para exportação Excel
+### Infraestrutura
+- [x] **CI/CD** — GitHub Actions (lint, test, build)
+- [x] **Testes unitários** — Vitest (11 testes)
+- [x] **Testes E2E** — Playwright (7 testes)
+- [x] **ESLint 9** — Flat config
+- [x] **Deploy Railway** — Hosting + domínio público
 
 ---
 
-## Roadmap de Melhorias
+## Roadmap — Novas Funcionalidades
 
-### Funcionalidades
-- [x] Trocar Claude por Gemini (gratuito)
-- [x] Retry automático em caso de quota
-- [x] **Edição manual** — Corrigir índices na tabela antes de exportar
-- [x] **Histórico** — Salvar leituras no localStorage para comparar meses
-- [x] **Cálculo de consumo** — Subtrair índice anterior do atual
-- [x] **Suporte a múltiplos formatos** — Telegram, iMessage, etc
-- [x] **Exportar PDF** — Documento formatado com tabela e rodapé
-- [x] **Compartilhar via link** — Link com hash encode para compartilhar resultados
+### 🎯 Alta Prioridade
 
-### UX/UI
-- [x] **Preview das fotos** — Thumbnail ao passar mouse
-- [x] **Skeleton loading** — Animações enquanto processa
-- [x] **Notificação sonora** — Alertar quando terminar
-- [x] **Drag & drop** — Arrastar arquivos direto na tela
-- [x] **Modo escuro** — Toggle dark/light
-- [x] **Tabela responsiva** — Melhor no celular
-- [x] **Acessibilidade** — ARIA labels, keyboard navigation, focus-visible
+- [x] **Entrada manual de índices** — Formulário para digitar índice quando OCR falha ou foto não existe
+- [ ] **Cálculo de tarifa de água** — Configurar faixas de preço (m³) e calcular valor por apartamento
+- [ ] **Alerta de consumo anormal** — Sinalizar apês com consumo 2x acima da média (possível vazamento)
+- [ ] **Relatório de comparação PDF** — PDF bonito comparando 2 períodos lado a lado
 
-### Infraestrutura
-- [x] **Testes** — Vitest para testes unitários
-- [x] **Linting** — ESLint + Prettier
-- [x] **CI/CD** — GitHub Actions
-- [x] **Rate limit inteligente** — Delay entre requests
-- [x] **Cache** — Evitar reprocessar fotos já lidas
+### 📊 Média Prioridade
 
-### Futuro
-- [x] **Testes E2E** — Playwright para testes de integração
-- [x] **Performance** — Lazy load, memoização avançada
-- [x] **Exportar CSV** — Formato leve para importar em outros sistemas
-- [x] **PWA offline** — Service worker + manifest para funcionar sem internet
-- [x] **Dashboard com gráficos** — Visualização de consumo por apartamento (recharts)
-- [x] **Notificação push** — Alertar quando quota Gemini esgotada
-- [x] **Comparar 3+ períodos** — Evolução do consumo ao longo do tempo
-- [x] **Dark mode automático** — Detectar preferência do sistema operacional
+- [ ] **Importar leituras via XLSX** — Carregar leituras anteriores de planilha existente
+- [ ] **Modo offline completo** — Tesseract como OCR principal sem API externa
+- [ ] **Backup/Restore** — Exportar/importar histórico completo como JSON
+- [ ] **Multi-usuário com login** — Síndicos/funcionários com seus próprios históricos
+
+### 🚀 Baixa Prioridade
+
+- [ ] **WhatsApp Bot** — Enviar fotos e receber leitura de volta
+- [ ] **API REST para condomínios** — Endpoint para sistemas externos puxarem leituras
+- [ ] **Detecção de anomalias com IA** — Analisar padrões e prever problemas
+- [ ] **i18n** — Português, Espanhol, Inglês
+
+---
+
+## Novas Sugestões de Funcionalidades
+
+### 📱 Mobile & Acessibilidade
+
+- [ ] **Gesture de swipe** — Deslizar para navegar entre fotos no mobile
+- [ ] **Modo uma mão** — Layout otimizado para uso com uma mão no celular
+- [ ] **Voice feedback** — Leitura por voz do índice extraído (acessibilidade)
+- [ ] **Zoom na foto** — Pinch-to-zoom para verificar detalhes da imagem
+- [ ] **Modo alto contraste** — Tema acessível para deficientes visuais
+
+### 📸 Câmera & Captura
+
+- [ ] **Captura direta pela câmera** — Tirar foto pelo app sem exportar do WhatsApp
+- [ ] **Multi-câmera** — Várias fotos do mesmo hidrômetro para aumentar confiança
+- [ ] **Flash automático** — Ajustar exposição para ambientes escuros
+- [ ] **OCR em tempo real** — Preview ao vivo enquanto aponta a câmera
+
+### 📊 Analytics & Relatórios
+
+- [ ] **Previsão de consumo** — IA prevê consumo dos próximos meses baseado no histórico
+- [ ] **Ranking de consumo** — Apartamentos que mais/menos consumiram no período
+- [ ] **Mapa de calor** — Visualização por andar/bloco com cores por consumo
+- [ ] **Comparar com média do prédio** — Benchmark individual vs coletivo
+- [ ] **Relatório automático mensal** — Gera PDF todo mês e envia por email
+- [ ] **Gráfico de tendência** — Regressão linear mostrando se consumo está subindo/descendo
+
+### 🔔 Notificações & Automação
+
+- [ ] **Lembrete de leitura** — Push notification para não esquecer de ler os hidrômetros
+- [ ] **Alerta de aumento >20%** — Notificação quando consumo sobe significativamente
+- [ ] **Resumo semanal por email** — Envia digest com consumo da semana
+- [ ] **Webhook** — Notifica sistemas externos quando leitura é concluída
+- [ ] **Agendamento** — Processar automaticamente em horário definido
+
+### 🏢 Gestão de Prédios
+
+- [ ] **Multi-prédio** — Gerenciar vários condomínios no mesmo app
+- [ ] **Estrutura do prédio** — Configurar andares, bloco, quantidade de apts
+- [ ] **Tarifa progressiva** — Configurar faixas de preço por faixa de consumo
+- [ ] **Rateio de água** — Calcular rateio comum + individual
+- [ ] **Histórico por bloco** — Agrupar por bloco além de apartamento
+- [ ] **Síndico vs Proprietário** — Dois modos de visualização com permissões diferentes
+
+### 💰 Financeiro
+
+- [ ] **Calcular conta de água** — Integrar com tabela de tarifas da concessionária
+- [ ] **Boleto automático** — Gerar cobrança por apartamento baseado no consumo
+- [ ] **Dívida ativa** — Rastrear apartamentos que não pagaram
+- [ ] **Comparar com meses anteriores** — Mostrar variação % e valor financeiro
+
+### 🔗 Integrações
+
+- [ ] **Google Sheets** — Sincronizar resultados com planilha online
+- [ ] **Slack/Telegram Bot** — Enviar resultado do dia automaticamente
+- [ ] **API pública** — REST API documentada para integrações externas
+- [ ] **Webhook para sistemas condominiais** — CondominioPay, iSyCred, etc
+- [ ] **Importar do Google Fotos** — Puxar fotos automaticamente
+- [ ] **Zapier/IFTTT** — Automações sem código
+
+### 🎨 UX Premium
+
+- [ ] **Onboarding interativo** — Tutorial passo a passo na primeira vez
+- [ ] **Temas personalizados** — Usuário escolhe cores do app
+- [ ] **Animações de transição** — Framer Motion entre telas
+- [ ] **Dark mode por schedule** — Escuro de noite, claro de dia
+- [ ] **Modo presentation** — Tela cheia para projetor/reunião de síndico
+- [ ] **Customizar colunas da tabela** — Escolher quais colunas mostrar/esconder
+
+### 🧪 Qualidade & Segurança
+
+- [ ] **Validação de OCR** — Marcar leituras improváveis (ex: índice > 99999)
+- [ ] **Detecção de foto duplicada** — Mesma foto enviada 2 vezes
+- [ ] **Criptografia do histórico** — Proteger dados sensíveis no localStorage
+- [ ] **Auditoria** — Log de quem alterou qual índice e quando
+- [ ] **Watermark no PDF** — Marca d'água com data e hora de geração
+
+### 🌐 Offline & Performance
+
+- [ ] **Service Worker avançado** — Cache de imagens também
+- [ ] **WebAssembly OCR** — Tesseract otimizado com WASM SIMD
+- [ ] **Processamento em Web Worker** — Não travar a UI durante OCR
+- [ ] **Lazy load de imagens** — Carregar fotos sob demanda
+- [ ] **Compressão server-side** — Mover compressão para API route
+
+---
+
+## Deploy
+
+### Railway (atual)
+- URL: https://hidrometro-app-web-production.up.railway.app
+- Deploy automático via GitHub
+
+### Local
+```bash
+npm install
+cp .env.example .env.local
+# Editar .env.local (OCR_SPACE_API_KEY opcional)
+npm run dev
+```
+
+## Comandos
+
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run start` | Iniciar em produção |
+| `npm run lint` | Verificar código |
+| `npm run test` | Testes unitários |
+| `npm run test:e2e` | Testes E2E |
+| `npm run format` | Formatar código |
+
+## Variáveis de Ambiente
+
+| Variável | Obrigatória | Descrição |
+|----------|-------------|-----------|
+| `OCR_SPACE_API_KEY` | Não | OCR.space (25k req/mês grátis) |
+| `GEMINI_API_KEY` | Não | Google Gemini (requer billing) |
+
+> [!tip] App funciona sem nenhuma chave — usa Tesseract.js como fallback local

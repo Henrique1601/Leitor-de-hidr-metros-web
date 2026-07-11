@@ -291,21 +291,109 @@ docker run -p 3000:3000 -e OCR_SPACE_API_KEY=sua_chave hidrometro-app
 - [x] Notificação de quota
 - [x] CI/CD com GitHub Actions
 - [x] Testes unitários (Vitest) + E2E (Playwright)
+- [x] Entrada manual de índices — Toggle para digitar quando OCR falha
 
 ### Possíveis Funcionalidades
 
-- [ ] Modo de entrada manual (digitar índices sem foto)
-- [ ] Cálculo de tarifa de água baseado no consumo
-- [ ] Alertas de consumo anormal (possível vazamento)
-- [ ] Relatório de comparação entre períodos (PDF)
-- [ ] Suporte a i18n (Português/Espanhol/Inglês)
-- [ ] Integração via API REST para sistemas de condomínio
-- [ ] Importação de leituras anteriores via XLSX
-- [ ] Detecção de anomalias com IA
-- [ ] WhatsApp Bot (enviar fotos e receber leituras)
-- [ ] Backup/restore do histórico completo
-- [ ] Multi-usuário com autenticação
-- [ ] Modo offline completo (OCR 100% local)
+- [ ] Cálculo de tarifa de água — Faixas de preço (m³) e valor por apartamento
+- [ ] Alerta de consumo anormal — Sinalizar apês com consumo 2x acima da média
+- [ ] Relatório de comparação PDF — Comparar 2 períodos lado a lado
+
+### 📊 Média Prioridade
+
+- [ ] Importar leituras via XLSX — Carregar leituras anteriores de planilha
+- [ ] Modo offline completo — Tesseract como OCR principal sem API externa
+- [ ] Backup/Restore — Exportar/importar histórico como JSON
+- [ ] Multi-usuário com login — Síndicos/funcionários com seus históricos
+
+### 🚀 Baixa Prioridade
+
+- [ ] WhatsApp Bot — Enviar fotos e receber leitura de volta
+- [ ] API REST para condomínios — Endpoint para sistemas externos
+- [ ] Detecção de anomalias com IA — Analisar padrões e prever problemas
+- [ ] i18n — Português, Espanhol, Inglês
+
+### 📱 Mobile & Acessibilidade
+
+- [ ] Gesture de swipe — Navegar entre fotos no mobile
+- [ ] Modo uma mão — Layout otimizado para uso com uma mão
+- [ ] Voice feedback — Leitura por voz do índice extraído
+- [ ] Zoom na foto — Pinch-to-zoom para verificar detalhes
+- [ ] Modo alto contraste — Tema acessível para deficientes visuais
+
+### 📸 Câmera & Captura
+
+- [ ] Captura direta pela câmera — Tirar foto pelo app sem exportar
+- [ ] Multi-câmera — Várias fotos do mesmo hidrômetro
+- [ ] Flash automático — Ajustar exposição para ambientes escuros
+- [ ] OCR em tempo real — Preview ao vivo enquanto aponta a câmera
+
+### 📊 Analytics & Relatórios
+
+- [ ] Previsão de consumo — IA prevê próximos meses baseado no histórico
+- [ ] Ranking de consumo — Apartamentos que mais/menos consumiram
+- [ ] Mapa de calor — Visualização por andar/bloco com cores
+- [ ] Comparar com média do prédio — Benchmark individual vs coletivo
+- [ ] Relatório automático mensal — PDF todo mês via email
+- [ ] Gráfico de tendência — Regressão linear (consumo subindo/descendo)
+
+### 🔔 Notificações & Automação
+
+- [ ] Lembrete de leitura — Push notification para não esquecer
+- [ ] Alerta de aumento >20% — Notificação quando consumo sobe
+- [ ] Resumo semanal por email — Digest com consumo da semana
+- [ ] Webhook — Notificar sistemas externos ao concluir leitura
+- [ ] Agendamento — Processar automaticamente em horário definido
+
+### 🏢 Gestão de Prédios
+
+- [ ] Multi-prédio — Gerenciar vários condomínios no mesmo app
+- [ ] Estrutura do prédio — Configurar andares, bloco, qtd de apts
+- [ ] Tarifa progressiva — Faixas de preço por faixa de consumo
+- [ ] Rateio de água — Calcular rateio comum + individual
+- [ ] Histórico por bloco — Agrupar por bloco além de apartamento
+- [ ] Síndico vs Proprietário — Dois modos com permissões diferentes
+
+### 💰 Financeiro
+
+- [ ] Calcular conta de água — Integrar com tabela da concessionária
+- [ ] Boleto automático — Gerar cobrança por apartamento
+- [ ] Dívida ativa — Rastrear apartamentos que não pagaram
+- [ ] Comparar com meses anteriores — Variação % e valor financeiro
+
+### 🔗 Integrações
+
+- [ ] Google Sheets — Sincronizar resultados com planilha online
+- [ ] Slack/Telegram Bot — Enviar resultado do dia automaticamente
+- [ ] API pública — REST API documentada para integrações externas
+- [ ] Webhook para sistemas condominiais — CondominioPay, iSyCred
+- [ ] Importar do Google Fotos — Puxar fotos automaticamente
+- [ ] Zapier/IFTTT — Automações sem código
+
+### 🎨 UX Premium
+
+- [ ] Onboarding interativo — Tutorial passo a passo na primeira vez
+- [ ] Temas personalizados — Usuário escolhe cores do app
+- [ ] Animações de transição — Framer Motion entre telas
+- [ ] Dark mode por schedule — Escuro de noite, claro de dia
+- [ ] Modo presentation — Tela cheia para projetor/reunião de síndico
+- [ ] Customizar colunas da tabela — Escolher quais mostrar/esconder
+
+### 🧪 Qualidade & Segurança
+
+- [ ] Validação de OCR — Marcar leituras improváveis (ex: índice > 99999)
+- [ ] Detecção de foto duplicada — Mesma foto enviada 2 vezes
+- [ ] Criptografia do histórico — Proteger dados no localStorage
+- [ ] Auditoria — Log de quem alterou qual índice e quando
+- [ ] Watermark no PDF — Marca d'água com data e hora de geração
+
+### 🌐 Offline & Performance
+
+- [ ] Service Worker avançado — Cache de imagens também
+- [ ] WebAssembly OCR — Tesseract otimizado com WASM SIMD
+- [ ] Processamento em Web Worker — Não travar a UI durante OCR
+- [ ] Lazy load de imagens — Carregar fotos sob demanda
+- [ ] Compressão server-side — Mover compressão para API route
 
 ---
 

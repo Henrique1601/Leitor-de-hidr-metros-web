@@ -11,6 +11,7 @@ import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, Histo
 import { exportPdf } from '@/lib/exportPdf';
 import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
+import ManualEntryPanel, { ManualEntry } from '@/components/ManualEntryPanel';
 import ProgressBar from '@/components/ProgressBar';
 import SkeletonLoading from '@/components/SkeletonLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -119,6 +120,8 @@ export default function Home() {
   const [sharedLabel, setSharedLabel] = useState('');
   const [quotaExhausted, setQuotaExhausted] = useState(false);
   const [quotaResetTime, setQuotaResetTime] = useState<number | null>(null);
+  const [manualEntryEnabled, setManualEntryEnabled] = useState(false);
+  const [manualEntries, setManualEntries] = useState<ManualEntry[]>([]);
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, toggle } = useTheme();
@@ -126,6 +129,28 @@ export default function Home() {
   useEffect(() => {
     setHistory(getHistory());
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('manualEntryEnabled');
+    if (saved !== null) setManualEntryEnabled(saved === 'true');
+    const savedEntries = localStorage.getItem('manualEntries');
+    if (savedEntries) {
+      try { setManualEntries(JSON.parse(savedEntries)); } catch { /* ignore */ }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('manualEntryEnabled', String(manualEntryEnabled));
+    }
+  }, [manualEntryEnabled]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('manualEntries', JSON.stringify(manualEntries));
+    }
+  }, [manualEntries]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -149,9 +174,17 @@ export default function Home() {
   }, [selectedHistoryId]);
 
   const groupedRows = useMemo(() => {
-    if (sharedResults) return sharedResults;
-    return groupByApartment(results, previousIndices);
-  }, [results, previousIndices, sharedResults]);
+    const ocrRows = sharedResults ? sharedResults : groupByApartment(results, previousIndices);
+    if (manualEntries.length === 0) return ocrRows;
+
+    const manualResults: ExtractResult[] = manualEntries.map((e) => ({
+      arquivo: `manual_${e.id}`,
+      apartamentosEsperados: [e.apartamento],
+      medidores: [{ posicao: 1, indiceInteiro: e.indice, indiceDecimal: '', confianca: 'alta' as const, observacao: 'Digitado manualmente' }],
+    }));
+    const allResults = [...results, ...manualResults];
+    return groupByApartment(allResults, previousIndices);
+  }, [results, previousIndices, sharedResults, manualEntries]);
 
   const photoPreviewMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -333,6 +366,14 @@ export default function Home() {
     }
   }
 
+  function handleAddManualEntry(entry: ManualEntry) {
+    setManualEntries((prev) => [...prev, entry]);
+  }
+
+  function handleRemoveManualEntry(id: string) {
+    setManualEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
   function handleEdit(apt: string, field: string, currentValue: string) {
     setEditingCell({ apt, field });
     setEditValue(currentValue);
@@ -435,12 +476,21 @@ export default function Home() {
           dateStart={dateStart}
           dateEnd={dateEnd}
           processing={processing}
+          manualEntryEnabled={manualEntryEnabled}
           onChatFileChange={setChatFile}
           onPhotoFilesChange={setPhotoFiles}
           onDateStartChange={setDateStart}
           onDateEndChange={setDateEnd}
           onProcess={handleProcess}
           onCancel={handleCancel}
+          onManualEntryToggle={setManualEntryEnabled}
+        />
+
+        <ManualEntryPanel
+          enabled={manualEntryEnabled}
+          entries={manualEntries}
+          onAdd={handleAddManualEntry}
+          onRemove={handleRemoveManualEntry}
         />
 
         {quotaExhausted && (

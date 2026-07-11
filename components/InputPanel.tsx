@@ -8,12 +8,14 @@ interface InputPanelProps {
   dateStart: string;
   dateEnd: string;
   processing: boolean;
+  manualEntryEnabled: boolean;
   onChatFileChange: (file: File | null) => void;
   onPhotoFilesChange: (files: File[]) => void;
   onDateStartChange: (date: string) => void;
   onDateEndChange: (date: string) => void;
   onProcess: () => void;
   onCancel: () => void;
+  onManualEntryToggle: (enabled: boolean) => void;
 }
 
 function InputPanelInner({
@@ -22,12 +24,14 @@ function InputPanelInner({
   dateStart,
   dateEnd,
   processing,
+  manualEntryEnabled,
   onChatFileChange,
   onPhotoFilesChange,
   onDateStartChange,
   onDateEndChange,
   onProcess,
   onCancel,
+  onManualEntryToggle,
 }: InputPanelProps) {
   const canProcess = useMemo(() => chatFile && photoFiles.length > 0 && !processing, [chatFile, photoFiles, processing]);
 
@@ -79,6 +83,18 @@ function InputPanelInner({
             Cancelar
           </button>
         )}
+        <label className="toggle-label" title="Ativar entrada manual de indices">
+          <span className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={manualEntryEnabled}
+              onChange={(e) => onManualEntryToggle(e.target.checked)}
+              aria-label="Ativar entrada manual"
+            />
+            <span className="toggle-track" />
+          </span>
+          <span className="toggle-text">Entrada manual</span>
+        </label>
       </div>
     </section>
   );
