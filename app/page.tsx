@@ -19,7 +19,7 @@ import { Dashboard } from '@/components/Dashboard';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
-const CONCURRENCY = 3;
+const CONCURRENCY = 2;
 const MAX_DIM = 1600;
 
 function compressImage(file: File): Promise<{ base64: string; mediaType: string }> {
@@ -224,6 +224,7 @@ export default function Home() {
       while (cursor < workload.length && !cancelRef.current) {
         const row = workload[cursor];
         cursor += 1;
+        console.log(`[worker] Processando ${cursor}/${workload.length}: ${row.arquivo}`);
         if (row.flags.includes('sem_acesso')) {
           setResults((prev) => [
             ...prev,
@@ -245,6 +246,7 @@ export default function Home() {
         await acquireSlot();
         try {
           const { base64, mediaType } = await compressImage(file);
+          console.log(`[worker] Imagem comprimida: ${row.arquivo} (${base64.length} bytes base64)`);
           let resp: Response;
           try {
             resp = await fetch('/api/extract', {
@@ -252,7 +254,9 @@ export default function Home() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
             });
+            console.log(`[worker] Resposta API: ${row.arquivo} status=${resp.status}`);
           } catch (fetchErr: any) {
+            console.error(`[worker] Erro de rede: ${row.arquivo}`, fetchErr);
             setResults((prev) => [
               ...prev,
               { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: `Falha de rede: ${fetchErr?.message}` },
@@ -264,6 +268,7 @@ export default function Home() {
           const data = await resp.json();
           if (!resp.ok) {
             const isQuota = data.erro?.includes('429') || data.erro?.includes('quota') || data.erro?.includes('Cota');
+            console.error(`[worker] Erro API: ${row.arquivo}`, data.erro);
             if (isQuota) {
               setQuotaExhausted(true);
               setQuotaResetTime(Date.now() + 60 * 60 * 1000);
@@ -276,6 +281,7 @@ export default function Home() {
               { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: data.erro },
             ]);
           } else {
+            console.log(`[worker] Sucesso: ${row.arquivo} (${data.medidores?.length || 0} medidores)`);
             await setCachedResult(file, {
               arquivo: data.arquivo,
               apartamentosEsperados: data.apartamentosEsperados,
@@ -284,6 +290,7 @@ export default function Home() {
             setResults((prev) => [...prev, data]);
           }
         } catch (e: any) {
+          console.error(`[worker] Excecao: ${row.arquivo}`, e);
           setResults((prev) => [
             ...prev,
             { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: e?.message },
@@ -297,6 +304,7 @@ export default function Home() {
 
     await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
     setProcessing(false);
+    console.log(`[worker] Processamento finalizado. Total: ${workload.length}`);
     if (!cancelRef.current) {
       playDoneSound();
     }
