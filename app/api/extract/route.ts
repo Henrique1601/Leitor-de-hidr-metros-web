@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractWithGemini } from "@/lib/gemini";
-import { extractWithTesseract } from "@/lib/tesseract";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,24 +16,31 @@ export async function POST(req: NextRequest) {
 
     const apts: string[] = apartamentos ?? [];
 
-    let result: { medidores: any[]; fallback?: boolean };
+    let result: { medidores: any[] };
 
     try {
       result = await extractWithGemini(imageBase64, mediaType, apts);
-      result.fallback = false;
     } catch (geminiError: any) {
-      console.warn(
-        `Gemini falhou para ${arquivo}, usando Tesseract:`,
-        geminiError?.message,
+      const msg = geminiError?.message || "falha desconhecida";
+      const isQuota = msg.includes("429") || msg.includes("quota");
+      return NextResponse.json(
+        {
+          arquivo,
+          apartamentosEsperados: apts,
+          medidores: [],
+          erro: isQuota
+            ? "Cota do Gemini esgotada. Aguarde alguns minutos e tente novamente."
+            : `Erro Gemini: ${msg}`,
+        },
+        { status: 500 },
       );
-      result = await extractWithTesseract(imageBase64, mediaType, apts);
     }
 
     return NextResponse.json({
       arquivo,
       apartamentosEsperados: apts,
       medidores: result.medidores,
-      fallback: result.fallback ?? false,
+      fallback: false,
     });
   } catch (err: any) {
     return NextResponse.json(
