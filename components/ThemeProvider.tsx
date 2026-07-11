@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 type Theme = 'dark' | 'light';
 
@@ -17,6 +17,7 @@ function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';
   const saved = localStorage.getItem('hidrometro-theme');
   if (saved === 'light' || saved === 'dark') return saved;
+  if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
   return 'dark';
 }
 
@@ -28,9 +29,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('hidrometro-theme', theme);
   }, [theme]);
 
-  function toggle() {
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('hidrometro-theme');
+      if (!saved) setTheme(e.matches ? 'light' : 'dark');
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const toggle = useCallback(() => {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-  }
+  }, []);
 
   return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;
 }

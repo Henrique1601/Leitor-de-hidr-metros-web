@@ -188,3 +188,9 @@ npm start
 ### Futuro
 - [x] **Testes E2E** — Playwright para testes de integração
 - [x] **Performance** — Lazy load, memoização avançada
+- [x] **Exportar CSV** — Formato leve para importar em outros sistemas
+- [x] **PWA offline** — Service worker + manifest para funcionar sem internet
+- [x] **Dashboard com gráficos** — Visualização de consumo por apartamento (recharts)
+- [x] **Notificação push** — Alertar quando quota Gemini esgotada
+- [x] **Comparar 3+ períodos** — Evolução do consumo ao longo do tempo
+- [x] **Dark mode automático** — Detectar preferência do sistema operacional

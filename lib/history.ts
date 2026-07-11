@@ -72,3 +72,33 @@ export function getLatestPreviousIndices(currentLabel?: string): Map<string, str
   if (!entry) return null;
   return getPreviousIndices(entry.id);
 }
+
+export interface PeriodData {
+  id: string;
+  label: string;
+  date: string;
+  rows: GroupedRow[];
+}
+
+export function getMultiPeriodData(limit: number = 5): PeriodData[] {
+  const history = getHistory();
+  return history.slice(0, limit).map((e) => ({
+    id: e.id,
+    label: e.label || new Date(e.date).toLocaleDateString('pt-BR'),
+    date: e.date,
+    rows: e.rows,
+  }));
+}
+
+export function getEvolutionData(apartments: string[], periods: PeriodData[]): Map<string, { period: string; consumo: number }[]> {
+  const evolution = new Map<string, { period: string; consumo: number }[]>();
+  for (const apt of apartments) {
+    const data: { period: string; consumo: number }[] = [];
+    for (const p of periods) {
+      const row = p.rows.find((r) => r.apartamento === apt);
+      data.push({ period: p.label, consumo: Number(row?.consumo) || 0 });
+    }
+    evolution.set(apt, data);
+  }
+  return evolution;
+}

@@ -14,6 +14,7 @@ interface ResultsTableProps {
   onCancelEdit: () => void;
   onExport: () => void;
   onExportPdf: () => void;
+  onExportCsv: () => void;
   onShare: () => void;
   shareCopied: boolean;
 }
@@ -29,6 +30,7 @@ export default function ResultsTable({
   onCancelEdit,
   onExport,
   onExportPdf,
+  onExportCsv,
   onShare,
   shareCopied,
 }: ResultsTableProps) {
@@ -119,6 +121,9 @@ export default function ResultsTable({
           </button>
           <button className="secondary" onClick={onExportPdf} aria-label="Exportar resultados como documento PDF">
             Exportar PDF
+          </button>
+          <button className="secondary" onClick={onExportCsv} aria-label="Exportar resultados como arquivo CSV">
+            Exportar CSV
           </button>
           <button className="secondary" onClick={onShare} aria-label={shareCopied ? 'Link copiado para area de transferencia' : 'Copiar link compartilhavel'}>
             {shareCopied ? 'Link copiado!' : 'Compartilhar'}

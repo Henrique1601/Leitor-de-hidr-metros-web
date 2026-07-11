@@ -15,6 +15,7 @@ import ProgressBar from '@/components/ProgressBar';
 import SkeletonLoading from '@/components/SkeletonLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useTheme } from '@/components/ThemeProvider';
+import { Dashboard } from '@/components/Dashboard';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -116,6 +117,8 @@ export default function Home() {
   const [historyLabel, setHistoryLabel] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
   const [sharedLabel, setSharedLabel] = useState('');
+  const [quotaExhausted, setQuotaExhausted] = useState(false);
+  const [quotaResetTime, setQuotaResetTime] = useState<number | null>(null);
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, toggle } = useTheme();
@@ -131,6 +134,12 @@ export default function Home() {
       setSharedResults(payload.rows);
       setSharedLabel(payload.label);
       window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
     }
   }, []);
 
@@ -232,6 +241,14 @@ export default function Home() {
           });
           const data = await resp.json();
           if (!resp.ok) {
+            const isQuota = data.erro?.includes('429') || data.erro?.includes('quota') || data.erro?.includes('Cota');
+            if (isQuota) {
+              setQuotaExhausted(true);
+              setQuotaResetTime(Date.now() + 60 * 60 * 1000);
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Leitor de Hidrometros', { body: 'Cota do Gemini esgotada. Tente novamente mais tarde.' });
+              }
+            }
             setResults((prev) => [
               ...prev,
               { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: data.erro },
@@ -328,6 +345,21 @@ export default function Home() {
     XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }, [groupedRows]);
 
+  const handleExportCsv = useCallback(() => {
+    const header = 'Apartamento,Indice,Consumo,Confianca,Observacao,Arquivo(s)';
+    const csvRows = groupedRows.map((r) =>
+      [r.apartamento, r.indice, r.consumo, r.confianca, `"${r.observacao.replace(/"/g, '""')}"`, `"${r.arquivos.replace(/"/g, '""')}"`].join(',')
+    );
+    const csv = [header, ...csvRows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'leituras_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [groupedRows]);
+
   const handleExportPdf = useCallback(() => {
     exportPdf(groupedRows, sharedLabel || historyLabel || undefined);
   }, [groupedRows, sharedLabel, historyLabel]);
@@ -374,6 +406,13 @@ export default function Home() {
           onCancel={handleCancel}
         />
 
+        {quotaExhausted && (
+          <div className="quota-warning visible" role="alert">
+            Cota do Gemini esgotada. As proximas imagens serao processadas por OCR local (Tesseract).
+            {quotaResetTime && ` Reset estimado: ${new Date(quotaResetTime).toLocaleTimeString('pt-BR')}.`}
+          </div>
+        )}
+
         {processing && total === 0 && <SkeletonLoading />}
 
         {(processing || total > 0) && <ProgressBar done={done} total={total} />}
@@ -385,6 +424,7 @@ export default function Home() {
                 Resultado compartilhado: <strong>{sharedLabel}</strong>
               </div>
             )}
+            <Dashboard rows={groupedRows} />
             <ResultsTable
               groupedRows={groupedRows}
               photoPreviewMap={photoPreviewMap}
@@ -396,6 +436,7 @@ export default function Home() {
               onCancelEdit={() => setEditingCell(null)}
               onExport={handleExport}
               onExportPdf={handleExportPdf}
+              onExportCsv={handleExportCsv}
               onShare={handleShare}
               shareCopied={shareCopied}
             />
