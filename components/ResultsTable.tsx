@@ -13,6 +13,9 @@ interface ResultsTableProps {
   onCommitEdit: () => void;
   onCancelEdit: () => void;
   onExport: () => void;
+  onExportPdf: () => void;
+  onShare: () => void;
+  shareCopied: boolean;
 }
 
 export default function ResultsTable({
@@ -25,6 +28,9 @@ export default function ResultsTable({
   onCommitEdit,
   onCancelEdit,
   onExport,
+  onExportPdf,
+  onShare,
+  shareCopied,
 }: ResultsTableProps) {
   const reviewCount = useMemo(
     () => groupedRows.filter((r) => r.confianca === 'baixa' || r.observacao.includes('DIVERGENCIA')).length,
@@ -32,10 +38,10 @@ export default function ResultsTable({
   );
 
   return (
-    <section className="panel">
+    <section className="panel" aria-label="Resultados por apartamento">
       <div className="panel-title">Resultado por apartamento</div>
-      <div className="table-wrap">
-        <table>
+      <div className="table-wrap" role="region" aria-label="Tabela de leituras" tabIndex={0}>
+        <table aria-label="Leituras de hidrometros por apartamento">
           <thead>
             <tr>
               <th>Ape</th>
@@ -107,9 +113,17 @@ export default function ResultsTable({
         <span className="stat">
           <strong>{groupedRows.length}</strong> apartamentos · <strong>{reviewCount}</strong> para revisar
         </span>
-        <button className="secondary" onClick={onExport}>
-          Exportar XLSX
-        </button>
+        <div className="export-buttons">
+          <button className="secondary" onClick={onExport} aria-label="Exportar resultados como planilha Excel">
+            Exportar XLSX
+          </button>
+          <button className="secondary" onClick={onExportPdf} aria-label="Exportar resultados como documento PDF">
+            Exportar PDF
+          </button>
+          <button className="secondary" onClick={onShare} aria-label={shareCopied ? 'Link copiado para area de transferencia' : 'Copiar link compartilhavel'}>
+            {shareCopied ? 'Link copiado!' : 'Compartilhar'}
+          </button>
+        </div>
       </div>
     </section>
   );

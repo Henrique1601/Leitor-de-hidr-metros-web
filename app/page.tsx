@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { parseChat, PhotoIndexRow } from '@/lib/parseChat';
-import { groupByApartment, ExtractResult } from '@/lib/results';
+import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
 import { getCachedResult, setCachedResult } from '@/lib/cache';
 import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
 import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, HistoryEntry } from '@/lib/history';
+import { exportPdf } from '@/lib/exportPdf';
+import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
 import ProgressBar from '@/components/ProgressBar';
 import SkeletonLoading from '@/components/SkeletonLoading';
@@ -81,7 +83,10 @@ export default function Home() {
   const [dragOver, setDragOver] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [sharedResults, setSharedResults] = useState<GroupedRow[] | null>(null);
   const [historyLabel, setHistoryLabel] = useState('');
+  const [shareCopied, setShareCopied] = useState(false);
+  const [sharedLabel, setSharedLabel] = useState('');
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, toggle } = useTheme();
@@ -90,12 +95,25 @@ export default function Home() {
     setHistory(getHistory());
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const payload = decodeShareUrl(window.location.hash);
+    if (payload && payload.rows.length > 0) {
+      setSharedResults(payload.rows);
+      setSharedLabel(payload.label);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
   const previousIndices = useMemo(() => {
     if (!selectedHistoryId) return undefined;
     return getPreviousIndices(selectedHistoryId) ?? undefined;
   }, [selectedHistoryId]);
 
-  const groupedRows = useMemo(() => groupByApartment(results, previousIndices), [results, previousIndices]);
+  const groupedRows = useMemo(() => {
+    if (sharedResults) return sharedResults;
+    return groupByApartment(results, previousIndices);
+  }, [results, previousIndices, sharedResults]);
 
   const photoPreviewMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -308,9 +326,22 @@ export default function Home() {
     XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }
 
+  function handleExportPdf() {
+    exportPdf(groupedRows, sharedLabel || historyLabel || undefined);
+  }
+
+  async function handleShare() {
+    const label = sharedLabel || historyLabel || new Date().toLocaleDateString('pt-BR');
+    const ok = await copyShareLink(groupedRows, label);
+    if (ok) {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  }
+
   return (
     <ErrorBoundary>
-      <button className="theme-toggle" onClick={toggle} title="Alternar tema">
+      <button className="theme-toggle" onClick={toggle} title="Alternar tema" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}>
         {theme === 'dark' ? '☀️' : '🌙'}
       </button>
       <main
@@ -346,21 +377,31 @@ export default function Home() {
         {(processing || total > 0) && <ProgressBar done={done} total={total} />}
 
         {groupedRows.length > 0 && (
-          <ResultsTable
-            groupedRows={groupedRows}
-            photoPreviewMap={photoPreviewMap}
-            editingCell={editingCell}
-            editValue={editValue}
-            onEdit={handleEdit}
-            onEditValueChange={setEditValue}
-            onCommitEdit={commitEdit}
-            onCancelEdit={() => setEditingCell(null)}
-            onExport={handleExport}
-          />
+          <>
+            {sharedLabel && (
+              <div className="shared-banner">
+                Resultado compartilhado: <strong>{sharedLabel}</strong>
+              </div>
+            )}
+            <ResultsTable
+              groupedRows={groupedRows}
+              photoPreviewMap={photoPreviewMap}
+              editingCell={editingCell}
+              editValue={editValue}
+              onEdit={handleEdit}
+              onEditValueChange={setEditValue}
+              onCommitEdit={commitEdit}
+              onCancelEdit={() => setEditingCell(null)}
+              onExport={handleExport}
+              onExportPdf={handleExportPdf}
+              onShare={handleShare}
+              shareCopied={shareCopied}
+            />
+          </>
         )}
 
         {groupedRows.length > 0 && (
-          <section className="panel">
+          <section className="panel" aria-label="Historico de leituras">
             <div className="panel-title">Historico</div>
             <div className="history-save">
               <input
@@ -373,8 +414,9 @@ export default function Home() {
                   if (e.key === 'Enter') handleSaveHistory();
                 }}
                 style={{ flex: 1 }}
+                aria-label="Label do periodo"
               />
-              <button className="secondary" onClick={handleSaveHistory}>
+              <button className="secondary" onClick={handleSaveHistory} aria-label="Salvar leitura no historico">
                 Salvar no historico
               </button>
             </div>

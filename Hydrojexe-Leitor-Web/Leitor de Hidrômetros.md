@@ -166,6 +166,8 @@ npm start
 - [x] **Histórico** — Salvar leituras no localStorage para comparar meses
 - [x] **Cálculo de consumo** — Subtrair índice anterior do atual
 - [x] **Suporte a múltiplos formatos** — Telegram, iMessage, etc
+- [x] **Exportar PDF** — Documento formatado com tabela e rodapé
+- [x] **Compartilhar via link** — Link com hash encode para compartilhar resultados
 
 ### UX/UI
 - [x] **Preview das fotos** — Thumbnail ao passar mouse
@@ -174,6 +176,7 @@ npm start
 - [x] **Drag & drop** — Arrastar arquivos direto na tela
 - [x] **Modo escuro** — Toggle dark/light
 - [x] **Tabela responsiva** — Melhor no celular
+- [x] **Acessibilidade** — ARIA labels, keyboard navigation, focus-visible
 
 ### Infraestrutura
 - [x] **Testes** — Vitest para testes unitários
@@ -181,3 +184,7 @@ npm start
 - [x] **CI/CD** — GitHub Actions
 - [x] **Rate limit inteligente** — Delay entre requests
 - [x] **Cache** — Evitar reprocessar fotos já lidas
+
+### Futuro
+- [ ] **Testes E2E** — Playwright para testes de integração
+- [ ] **Performance** — Lazy load, memoização avançada

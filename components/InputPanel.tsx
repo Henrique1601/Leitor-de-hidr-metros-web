@@ -30,48 +30,50 @@ export default function InputPanel({
   const canProcess = chatFile && photoFiles.length > 0 && !processing;
 
   return (
-    <section className="panel">
+    <section className="panel" aria-label="Entrada de dados">
       <div className="panel-title">Entrada</div>
       <div className="row" style={{ marginBottom: 16 }}>
         <div className="dropzone">
           <div>
-            <label>Conversa exportada (.txt, com midia)</label>
+            <label htmlFor="chat-file">Conversa exportada (.txt, com midia)</label>
             <div className="hint">{chatFile ? chatFile.name : 'Nenhum arquivo selecionado'}</div>
           </div>
-          <input type="file" accept=".txt" onChange={(e) => onChatFileChange(e.target.files?.[0] ?? null)} />
+          <input id="chat-file" type="file" accept=".txt" onChange={(e) => onChatFileChange(e.target.files?.[0] ?? null)} aria-describedby="chat-hint" />
         </div>
       </div>
       <div className="row" style={{ marginBottom: 16 }}>
         <div className="dropzone">
           <div>
-            <label>Pasta de fotos</label>
-            <div className="hint">{photoFiles.length ? photoFiles.length + ' arquivo(s)' : 'Nenhuma pasta selecionada'}</div>
+            <label htmlFor="photo-files">Pasta de fotos</label>
+            <div className="hint" id="photo-hint">{photoFiles.length ? photoFiles.length + ' arquivo(s)' : 'Nenhuma pasta selecionada'}</div>
           </div>
           <input
+            id="photo-files"
             type="file"
             multiple
             // @ts-ignore
             webkitdirectory=""
             onChange={(e) => onPhotoFilesChange(Array.from(e.target.files ?? []))}
+            aria-describedby="photo-hint"
           />
         </div>
       </div>
       <div className="row" style={{ marginBottom: 20 }}>
         <div className="field">
-          <label>Data inicial (opcional)</label>
-          <input type="date" value={dateStart} onChange={(e) => onDateStartChange(e.target.value)} />
+          <label htmlFor="date-start">Data inicial (opcional)</label>
+          <input id="date-start" type="date" value={dateStart} onChange={(e) => onDateStartChange(e.target.value)} />
         </div>
         <div className="field">
-          <label>Data final (opcional)</label>
-          <input type="date" value={dateEnd} onChange={(e) => onDateEndChange(e.target.value)} />
+          <label htmlFor="date-end">Data final (opcional)</label>
+          <input id="date-end" type="date" value={dateEnd} onChange={(e) => onDateEndChange(e.target.value)} />
         </div>
       </div>
       <div className="button-row">
-        <button className="primary" onClick={onProcess} disabled={!canProcess}>
+        <button className="primary" onClick={onProcess} disabled={!canProcess} aria-label={processing ? 'Processando fotos...' : 'Processar fotos'}>
           {processing ? 'Processando...' : 'Processar fotos'}
         </button>
         {processing && (
-          <button className="danger" onClick={onCancel}>
+          <button className="danger" onClick={onCancel} aria-label="Cancelar processamento">
             Cancelar
           </button>
         )}
