@@ -20,7 +20,7 @@ const FORMAT_DETECTORS: { format: ChatFormat; test: (line: string) => boolean }[
 
 const ATTACH_PATTERNS: Record<ChatFormat, { regex: RegExp; dateGroup: number; fileGroup: number }> = {
   whatsapp: {
-    regex: /\u200e?(IMG-(\d{8})-WA\d+\.(jpg|jpeg|png))\s\(arquivo anexado\)/i,
+    regex: /\u200e?(IMG[-_](\d{8})[-_]WA\d+\.(jpg|jpeg|png|webp))[\s]*(?:\(arquivo anexado\)|<.*>)?/i,
     dateGroup: 2,
     fileGroup: 1,
   },
@@ -214,14 +214,20 @@ function parseIMessage(chatText: string, dateStart?: string, dateEnd?: string): 
 
 export function parseChat(chatText: string, dateStart?: string, dateEnd?: string): PhotoIndexRow[] {
   const format = detectFormat(chatText.split('\n'));
+  console.log(`[parseChat] Formato detectado: ${format}, linhas: ${chatText.split('\n').length}`);
+  let rows: PhotoIndexRow[];
   switch (format) {
     case 'telegram':
-      return parseTelegram(chatText, dateStart, dateEnd);
+      rows = parseTelegram(chatText, dateStart, dateEnd);
+      break;
     case 'imessage':
-      return parseIMessage(chatText, dateStart, dateEnd);
+      rows = parseIMessage(chatText, dateStart, dateEnd);
+      break;
     default:
-      return parseWhatsApp(chatText, dateStart, dateEnd);
+      rows = parseWhatsApp(chatText, dateStart, dateEnd);
   }
+  console.log(`[parseChat] Fotos encontradas: ${rows.length}`);
+  return rows;
 }
 
 export function getChatFormat(chatText: string): ChatFormat {

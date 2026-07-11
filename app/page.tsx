@@ -208,6 +208,17 @@ export default function Home() {
     const workload = index.filter((row) => photoMapRef.current.has(row.arquivo));
     setTotal(workload.length);
 
+    if (workload.length === 0) {
+      setProcessing(false);
+      setResults([]);
+      alert(
+        index.length === 0
+          ? 'Nenhuma foto encontrada no chat. Verifique se o formato do arquivo .txt e compativel (WhatsApp, Telegram ou iMessage).'
+          : `Encontradas ${index.length} fotos no chat, mas nenhuma corresponde aos arquivos enviados. Envie as fotos .jpg/.png junto com o arquivo .txt do chat.`
+      );
+      return;
+    }
+
     let cursor = 0;
     async function worker() {
       while (cursor < workload.length && !cancelRef.current) {
@@ -234,11 +245,22 @@ export default function Home() {
         await acquireSlot();
         try {
           const { base64, mediaType } = await compressImage(file);
-          const resp = await fetch('/api/extract', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
-          });
+          let resp: Response;
+          try {
+            resp = await fetch('/api/extract', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
+            });
+          } catch (fetchErr: any) {
+            setResults((prev) => [
+              ...prev,
+              { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: `Falha de rede: ${fetchErr?.message}` },
+            ]);
+            setDone((d) => d + 1);
+            releaseSlot();
+            continue;
+          }
           const data = await resp.json();
           if (!resp.ok) {
             const isQuota = data.erro?.includes('429') || data.erro?.includes('quota') || data.erro?.includes('Cota');
