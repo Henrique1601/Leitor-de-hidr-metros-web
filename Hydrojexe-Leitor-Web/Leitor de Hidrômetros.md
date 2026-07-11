@@ -186,5 +186,5 @@ npm start
 - [x] **Cache** — Evitar reprocessar fotos já lidas
 
 ### Futuro
-- [ ] **Testes E2E** — Playwright para testes de integração
-- [ ] **Performance** — Lazy load, memoização avançada
+- [x] **Testes E2E** — Playwright para testes de integração
+- [x] **Performance** — Lazy load, memoização avançada
