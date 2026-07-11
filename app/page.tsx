@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import * as XLSX from 'xlsx';
 import { parseChat, PhotoIndexRow } from '@/lib/parseChat';
 import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
@@ -12,9 +13,10 @@ import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
 import ProgressBar from '@/components/ProgressBar';
 import SkeletonLoading from '@/components/SkeletonLoading';
-import ResultsTable from '@/components/ResultsTable';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useTheme } from '@/components/ThemeProvider';
+
+const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
 const CONCURRENCY = 3;
 const MAX_DIM = 1600;
@@ -67,6 +69,33 @@ function playDoneSound() {
 
 function fileToKey(f: File): string {
   return f.name + '__' + f.size;
+}
+
+function readEntryRecursive(entry: FileSystemEntry, acc: File[]) {
+  if (entry.isFile) {
+    (entry as FileSystemFileEntry).file((f) => acc.push(f));
+  } else if (entry.isDirectory) {
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    reader.readEntries((entries) => {
+      for (const e of entries) readEntryRecursive(e, acc);
+    });
+  }
+}
+
+function classifyFiles(files: File[], setChatFile: (f: File | null) => void, setPhotoFiles: React.Dispatch<React.SetStateAction<File[]>>) {
+  const txt = files.find((f) => f.name.endsWith('.txt'));
+  const images = files.filter((f) => f.type.startsWith('image/'));
+  if (txt) setChatFile(txt);
+  if (images.length > 0) {
+    setPhotoFiles((prev) => {
+      const existing = new Set(prev.map(fileToKey));
+      const merged = [...prev];
+      for (const img of images) {
+        if (!existing.has(fileToKey(img))) merged.push(img);
+      }
+      return merged;
+    });
+  }
 }
 
 export default function Home() {
@@ -129,13 +158,13 @@ export default function Home() {
     setDragOver(true);
   }
 
-  function handleDragLeave(e: React.DragEvent) {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
-  }
+  }, []);
 
-  function handleDrop(e: React.DragEvent) {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
@@ -150,39 +179,12 @@ export default function Home() {
         if (f) files.push(f);
       }
     }
-    setTimeout(() => classifyFiles(files), 0);
-  }
+    setTimeout(() => classifyFiles(files, setChatFile, setPhotoFiles), 0);
+  }, [setChatFile, setPhotoFiles]);
 
-  function readEntryRecursive(entry: FileSystemEntry, acc: File[]) {
-    if (entry.isFile) {
-      (entry as FileSystemFileEntry).file((f) => acc.push(f));
-    } else if (entry.isDirectory) {
-      const reader = (entry as FileSystemDirectoryEntry).createReader();
-      reader.readEntries((entries) => {
-        for (const e of entries) readEntryRecursive(e, acc);
-      });
-    }
-  }
-
-  function classifyFiles(files: File[]) {
-    const txt = files.find((f) => f.name.endsWith('.txt'));
-    const images = files.filter((f) => f.type.startsWith('image/'));
-    if (txt) setChatFile(txt);
-    if (images.length > 0) {
-      setPhotoFiles((prev) => {
-        const existing = new Set(prev.map(fileToKey));
-        const merged = [...prev];
-        for (const img of images) {
-          if (!existing.has(fileToKey(img))) merged.push(img);
-        }
-        return merged;
-      });
-    }
-  }
-
-  function handleCancel() {
+  const handleCancel = useCallback(() => {
     cancelRef.current = true;
-  }
+  }, []);
 
   async function handleProcess() {
     if (!chatFile || photoFiles.length === 0) return;
@@ -310,7 +312,7 @@ export default function Home() {
     setEditingCell(null);
   }
 
-  function handleExport() {
+  const handleExport = useCallback(() => {
     const rows = groupedRows.map((r) => ({
       Apartamento: r.apartamento,
       Indice: r.indice,
@@ -324,20 +326,20 @@ export default function Home() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leituras');
     XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
-  }
+  }, [groupedRows]);
 
-  function handleExportPdf() {
+  const handleExportPdf = useCallback(() => {
     exportPdf(groupedRows, sharedLabel || historyLabel || undefined);
-  }
+  }, [groupedRows, sharedLabel, historyLabel]);
 
-  async function handleShare() {
+  const handleShare = useCallback(async () => {
     const label = sharedLabel || historyLabel || new Date().toLocaleDateString('pt-BR');
     const ok = await copyShareLink(groupedRows, label);
     if (ok) {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     }
-  }
+  }, [groupedRows, sharedLabel, historyLabel]);
 
   return (
     <ErrorBoundary>

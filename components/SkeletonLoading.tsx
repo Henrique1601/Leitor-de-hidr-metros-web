@@ -1,6 +1,8 @@
 'use client';
 
-export default function SkeletonLoading() {
+import { memo } from 'react';
+
+function SkeletonLoadingInner() {
   return (
     <section className="panel">
       <div className="panel-title">Carregando</div>
@@ -17,3 +19,5 @@ export default function SkeletonLoading() {
     </section>
   );
 }
+
+export default memo(SkeletonLoadingInner);

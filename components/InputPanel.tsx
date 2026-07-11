@@ -1,5 +1,7 @@
 'use client';
 
+import { memo, useMemo } from 'react';
+
 interface InputPanelProps {
   chatFile: File | null;
   photoFiles: File[];
@@ -14,7 +16,7 @@ interface InputPanelProps {
   onCancel: () => void;
 }
 
-export default function InputPanel({
+function InputPanelInner({
   chatFile,
   photoFiles,
   dateStart,
@@ -27,7 +29,7 @@ export default function InputPanel({
   onProcess,
   onCancel,
 }: InputPanelProps) {
-  const canProcess = chatFile && photoFiles.length > 0 && !processing;
+  const canProcess = useMemo(() => chatFile && photoFiles.length > 0 && !processing, [chatFile, photoFiles, processing]);
 
   return (
     <section className="panel" aria-label="Entrada de dados">
@@ -81,3 +83,5 @@ export default function InputPanel({
     </section>
   );
 }
+
+export default memo(InputPanelInner);

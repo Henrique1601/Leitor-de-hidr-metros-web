@@ -1,11 +1,13 @@
 'use client';
 
+import { memo } from 'react';
+
 interface ProgressBarProps {
   done: number;
   total: number;
 }
 
-export default function ProgressBar({ done, total }: ProgressBarProps) {
+function ProgressBarInner({ done, total }: ProgressBarProps) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
@@ -23,3 +25,5 @@ export default function ProgressBar({ done, total }: ProgressBarProps) {
     </section>
   );
 }
+
+export default memo(ProgressBarInner);
