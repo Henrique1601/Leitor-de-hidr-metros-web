@@ -249,17 +249,24 @@ export default function Home() {
           console.log(`[worker] Imagem comprimida: ${row.arquivo} (${base64.length} bytes base64)`);
           let resp: Response;
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
             resp = await fetch('/api/extract', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
+              signal: controller.signal,
             });
+            clearTimeout(timeoutId);
             console.log(`[worker] Resposta API: ${row.arquivo} status=${resp.status}`);
           } catch (fetchErr: any) {
-            console.error(`[worker] Erro de rede: ${row.arquivo}`, fetchErr);
+            const msg = fetchErr?.name === 'AbortError'
+              ? 'Timeout: servidor demorou mais de 25s para responder'
+              : `Falha de rede: ${fetchErr?.message}`;
+            console.error(`[worker] Erro de rede: ${row.arquivo}`, msg);
             setResults((prev) => [
               ...prev,
-              { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: `Falha de rede: ${fetchErr?.message}` },
+              { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: msg },
             ]);
             setDone((d) => d + 1);
             releaseSlot();

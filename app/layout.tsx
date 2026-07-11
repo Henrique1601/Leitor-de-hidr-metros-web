@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: 'Leitor de Hidrômetros',
   description: 'Extração automática de índices de hidrômetros a partir de fotos',
   manifest: '/manifest.json',
+  icons: { icon: '/favicon.png' },
 };
 
 export const viewport: Viewport = {
