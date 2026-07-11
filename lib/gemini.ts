@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const rawKey = (process.env.GEMINI_API_KEY || '').trim();
+const apiKey = rawKey.split(/\s+/)[0] || rawKey;
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export interface MedidorRead {
   posicao: number;
@@ -33,8 +35,8 @@ export async function extractWithGemini(
   mediaType: string,
   apartamentos: string[]
 ): Promise<{ medidores: MedidorRead[] }> {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY não configurada');
+  if (!apiKey || apiKey.length < 10) {
+    throw new Error('GEMINI_API_KEY não configurada ou inválida');
   }
 
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
