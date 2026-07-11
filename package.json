@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "lint": "next lint",
+    "lint": "eslint app/ lib/ components/",
     "format": "prettier --write ."
   },
   "dependencies": {
