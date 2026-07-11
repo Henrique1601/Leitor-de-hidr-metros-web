@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractWithGemini } from "@/lib/gemini";
+import { extractWithOCRSpace } from "@/lib/ocrspace";
 import { extractWithTesseract } from "@/lib/tesseract";
 
 export const runtime = "nodejs";
@@ -18,42 +19,60 @@ export async function POST(req: NextRequest) {
 
     const apts: string[] = apartamentos ?? [];
 
-    try {
-      const result = await extractWithGemini(imageBase64, mediaType, apts);
-      return NextResponse.json({
-        arquivo,
-        apartamentosEsperados: apts,
-        medidores: result.medidores,
-        fallback: false,
-      });
-    } catch (geminiError: any) {
-      console.warn(`Gemini falhou para ${arquivo}: ${geminiError?.message}`);
-      console.warn(`Tentando Tesseract fallback...`);
+    const hasGemini = !!(process.env.GEMINI_API_KEY || '').trim() &&
+      (process.env.GEMINI_API_KEY || '').trim().length >= 10;
+    const hasOCRSpace = !!(process.env.OCR_SPACE_API_KEY || '').trim() &&
+      (process.env.OCR_SPACE_API_KEY || '').trim().length >= 10;
+
+    if (hasGemini) {
       try {
-        const fallbackResult = await extractWithTesseract(imageBase64, mediaType, apts);
+        const result = await extractWithGemini(imageBase64, mediaType, apts);
         return NextResponse.json({
           arquivo,
           apartamentosEsperados: apts,
-          medidores: fallbackResult.medidores,
-          fallback: true,
+          medidores: result.medidores,
+          fallback: false,
         });
-      } catch (tesseractError: any) {
-        console.error(`Tesseract falhou para ${arquivo}: ${tesseractError?.message}`);
-        const geminiMsg = geminiError?.message || "falha desconhecida";
-        const tessMsg = tesseractError?.message || "falha desconhecida";
-        const isQuota = geminiMsg.includes("429") || geminiMsg.includes("quota") || geminiMsg.includes("RESOURCE_EXHAUSTED");
-        return NextResponse.json(
-          {
-            arquivo,
-            apartamentosEsperados: apts,
-            medidores: [],
-            erro: isQuota
-              ? `Cota do Gemini esgotada. OCR fallback tambem falhou: ${tessMsg}`
-              : `Gemini: ${geminiMsg} | OCR: ${tessMsg}`,
-          },
-          { status: 500 },
-        );
+      } catch (geminiError: any) {
+        console.warn(`Gemini falhou para ${arquivo}: ${geminiError?.message}`);
       }
+    }
+
+    if (hasOCRSpace) {
+      try {
+        console.log(`Tentando OCR.space para ${arquivo}...`);
+        const result = await extractWithOCRSpace(imageBase64, mediaType, apts);
+        return NextResponse.json({
+          arquivo,
+          apartamentosEsperados: apts,
+          medidores: result.medidores,
+          fallback: !hasGemini,
+        });
+      } catch (ocrError: any) {
+        console.warn(`OCR.space falhou para ${arquivo}: ${ocrError?.message}`);
+      }
+    }
+
+    try {
+      console.log(`Tentando Tesseract fallback para ${arquivo}...`);
+      const fallbackResult = await extractWithTesseract(imageBase64, mediaType, apts);
+      return NextResponse.json({
+        arquivo,
+        apartamentosEsperados: apts,
+        medidores: fallbackResult.medidores,
+        fallback: true,
+      });
+    } catch (tesseractError: any) {
+      console.error(`Tesseract falhou para ${arquivo}: ${tesseractError?.message}`);
+      return NextResponse.json(
+        {
+          arquivo,
+          apartamentosEsperados: apts,
+          medidores: [],
+          erro: `Todos os métodos de OCR falharam: ${tesseractError?.message || 'falha desconhecida'}`,
+        },
+        { status: 500 },
+      );
     }
   } catch (err: any) {
     return NextResponse.json(
