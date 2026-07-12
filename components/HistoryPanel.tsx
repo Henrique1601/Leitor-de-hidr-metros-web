@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { HistoryEntry } from '@/lib/history';
 import { saveToHistory } from '@/lib/history';
 import { exportBackup, importBackup } from '@/lib/backup';
 import { parseXlsx } from '@/lib/importXlsx';
+import { exportComparativo } from '@/lib/exportComparativo';
 
 interface HistoryPanelProps {
   history: HistoryEntry[];
@@ -31,6 +32,23 @@ export default function HistoryPanel({
 }: HistoryPanelProps) {
   const importRef = useRef<HTMLInputElement>(null);
   const xlsxRef = useRef<HTMLInputElement>(null);
+  const [compareId, setCompareId] = useState<string | null>(null);
+
+  const selectedEntry = history.find((e) => e.id === selectedHistoryId);
+  const compareEntry = history.find((e) => e.id === compareId);
+
+  function handleCompareToggle(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    setCompareId((prev) => (prev === id ? null : id));
+  }
+
+  function handleComparativo() {
+    if (!selectedEntry || !compareEntry) return;
+    exportComparativo(
+      { label: selectedEntry.label, rows: selectedEntry.rows },
+      { label: compareEntry.label, rows: compareEntry.rows }
+    );
+  }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -60,6 +78,8 @@ export default function HistoryPanel({
     }
     if (xlsxRef.current) xlsxRef.current.value = '';
   }
+
+  const showComparativo = selectedEntry && compareEntry && selectedEntry.id !== compareEntry.id;
 
   return (
     <section className="panel" aria-label="Historico de leituras">
@@ -110,35 +130,40 @@ export default function HistoryPanel({
           aria-label="Selecionar planilha XLSX ou CSV"
         />
       </div>
+      {showComparativo && (
+        <div className="history-actions">
+          <button className="primary" onClick={handleComparativo} aria-label="Gerar PDF comparativo entre os dois periodos selecionados">
+            Comparar {selectedEntry.label} vs {compareEntry.label} (PDF)
+          </button>
+        </div>
+      )}
       {history.length > 0 && (
         <div className="history-list">
           <div className="history-item header">
             <span>Periodo</span>
             <span>Data</span>
             <span>Apts</span>
-            <span></span>
+            <span title="Selecionar para comparar">Cmp</span>
           </div>
           {history.map((entry) => {
             const date = new Date(entry.date).toLocaleDateString('pt-BR');
             const isSelected = selectedHistoryId === entry.id;
+            const isCompare = compareId === entry.id;
             return (
               <div
                 key={entry.id}
-                className={'history-item' + (isSelected ? ' selected' : '')}
+                className={'history-item' + (isSelected ? ' selected' : '') + (isCompare ? ' compare' : '')}
                 onClick={() => onSelect(isSelected ? null : entry.id)}
               >
                 <span className="mono">{entry.label}</span>
                 <span className="history-date">{date}</span>
                 <span>{entry.rows.length}</span>
                 <button
-                  className="history-delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(entry.id);
-                  }}
-                  title="Remover"
+                  className={'history-compare' + (isCompare ? ' active' : '')}
+                  onClick={(e) => handleCompareToggle(e, entry.id)}
+                  title="Selecionar para comparar"
                 >
-                  ×
+                  {isCompare ? '✓' : '⇔'}
                 </button>
               </div>
             );

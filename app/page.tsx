@@ -8,11 +8,13 @@ import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
 import { getCachedResult, setCachedResult } from '@/lib/cache';
 import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
 import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, HistoryEntry } from '@/lib/history';
+import { getTarifaConfig, TarifaConfig, calcularTarifa } from '@/lib/tarifa';
 import { exportPdf } from '@/lib/exportPdf';
 import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
 import ManualEntryPanel, { ManualEntry } from '@/components/ManualEntryPanel';
 import HistoryPanel from '@/components/HistoryPanel';
+import TarifaPanel from '@/components/TarifaPanel';
 import ProgressBar from '@/components/ProgressBar';
 import SkeletonLoading from '@/components/SkeletonLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -123,12 +125,14 @@ export default function Home() {
   const [quotaResetTime, setQuotaResetTime] = useState<number | null>(null);
   const [manualEntryEnabled, setManualEntryEnabled] = useState(false);
   const [manualEntries, setManualEntries] = useState<ManualEntry[]>([]);
+  const [tarifaConfig, setTarifaConfig] = useState<TarifaConfig>({ faixas: [], fixo: 0 });
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, toggle } = useTheme();
 
   useEffect(() => {
     setHistory(getHistory());
+    setTarifaConfig(getTarifaConfig());
   }, []);
 
   useEffect(() => {
@@ -409,21 +413,27 @@ export default function Home() {
   }
 
   const handleExport = useCallback(() => {
-    const rows = groupedRows.map((r) => ({
-      Apartamento: r.apartamento,
-      Indice: r.indice,
-      Consumo: r.consumo,
-      Confianca: r.confianca,
-      Observacao: r.observacao,
-      Validacao: r.validacao || '',
-      'Arquivo(s)': r.arquivos,
-    }));
+    const rows = groupedRows.map((r) => {
+      const cleaned = r.consumo.replace(/[^\d\-\.]/g, '');
+      const consumo = parseFloat(cleaned);
+      const valor = !isNaN(consumo) && consumo > 0 && tarifaConfig.faixas.length > 0 ? calcularTarifa(consumo, tarifaConfig) : 0;
+      return {
+        Apartamento: r.apartamento,
+        Indice: r.indice,
+        Consumo: r.consumo,
+        Valor: valor > 0 ? `R$ ${valor.toFixed(2).replace('.', ',')}` : '',
+        Confianca: r.confianca,
+        Observacao: r.observacao,
+        Validacao: r.validacao || '',
+        'Arquivo(s)': r.arquivos,
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 40 }, { wch: 45 }];
+    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 40 }, { wch: 45 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leituras');
     XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
-  }, [groupedRows]);
+  }, [groupedRows, tarifaConfig]);
 
   const handleExportCsv = useCallback(() => {
     const header = 'Apartamento,Indice,Consumo,Confianca,Observacao,Validacao,Arquivo(s)';
@@ -495,6 +505,8 @@ export default function Home() {
           onRemove={handleRemoveManualEntry}
         />
 
+        <TarifaPanel onConfigChange={setTarifaConfig} />
+
         {quotaExhausted && (
           <div className="quota-warning visible" role="alert">
             Cota do Gemini esgotada. As proximas imagens serao processadas por OCR local (Tesseract).
@@ -516,6 +528,7 @@ export default function Home() {
             <Dashboard rows={groupedRows} />
             <ResultsTable
               groupedRows={groupedRows}
+              tarifaConfig={tarifaConfig}
               photoPreviewMap={photoPreviewMap}
               editingCell={editingCell}
               editValue={editValue}

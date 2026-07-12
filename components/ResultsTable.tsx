@@ -2,9 +2,11 @@
 
 import { useMemo } from 'react';
 import type { GroupedRow } from '@/lib/results';
+import { TarifaConfig, calcularTarifa, formatarMoeda } from '@/lib/tarifa';
 
 interface ResultsTableProps {
   groupedRows: GroupedRow[];
+  tarifaConfig: TarifaConfig;
   photoPreviewMap: Map<string, string>;
   editingCell: { apt: string; field: string } | null;
   editValue: string;
@@ -21,6 +23,7 @@ interface ResultsTableProps {
 
 export default function ResultsTable({
   groupedRows,
+  tarifaConfig,
   photoPreviewMap,
   editingCell,
   editValue,
@@ -39,6 +42,28 @@ export default function ResultsTable({
     [groupedRows]
   );
 
+  const abnormalSet = useMemo(() => {
+    const consumos = groupedRows
+      .map((r) => {
+        const cleaned = r.consumo.replace(/[^\d\-\.]/g, '');
+        return parseFloat(cleaned);
+      })
+      .filter((v) => !isNaN(v) && v > 0);
+    if (consumos.length < 3) return new Set<string>();
+    const sorted = [...consumos].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const threshold = median * 2;
+    return new Set(
+      groupedRows
+        .filter((r) => {
+          const cleaned = r.consumo.replace(/[^\d\-\.]/g, '');
+          const v = parseFloat(cleaned);
+          return !isNaN(v) && v >= threshold;
+        })
+        .map((r) => r.apartamento)
+    );
+  }, [groupedRows]);
+
   return (
     <section className="panel" aria-label="Resultados por apartamento">
       <div className="panel-title">Resultado por apartamento</div>
@@ -49,6 +74,8 @@ export default function ResultsTable({
               <th>Ape</th>
               <th>Indice</th>
               <th>Consumo</th>
+              <th className="th-validacao">Alerta</th>
+              <th className="th-valor">Valor</th>
               <th>Confianca</th>
               <th>Observacao</th>
               <th className="th-validacao">Validacao</th>
@@ -95,6 +122,21 @@ export default function ResultsTable({
                       '---'
                     )}
                   </td>
+                  <td className="td-validacao">
+                    {abnormalSet.has(r.apartamento) && (
+                      <span className="badge-alerta" title="Consumo anormal — 2x acima da media (possivel vazamento)">
+                        🚰
+                      </span>
+                    )}
+                  </td>
+                  <td className="td-valor mono">
+                    {r.consumo && tarifaConfig.faixas.length > 0 ? (() => {
+                      const cleaned = r.consumo.replace(/[^\d\-\.]/g, '');
+                      const consumo = parseFloat(cleaned);
+                      if (isNaN(consumo) || consumo <= 0) return '---';
+                      return formatarMoeda(calcularTarifa(consumo, tarifaConfig));
+                    })() : '---'}
+                  </td>
                   <td>
                     <span className={'badge ' + r.confianca.toLowerCase()}>{r.confianca}</span>
                   </td>
@@ -121,7 +163,7 @@ export default function ResultsTable({
       </div>
       <div className="footer-actions">
         <span className="stat">
-          <strong>{groupedRows.length}</strong> apartamentos · <strong>{reviewCount}</strong> para revisar
+          <strong>{groupedRows.length}</strong> apartamentos · <strong>{reviewCount}</strong> para revisar{abnormalSet.size > 0 && <> · <strong>{abnormalSet.size}</strong> consumo anormal</>}
         </span>
         <div className="export-buttons">
           <button className="secondary" onClick={onExport} aria-label="Exportar resultados como planilha Excel">

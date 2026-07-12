@@ -240,6 +240,36 @@ button.danger:hover { background: rgba(226, 96, 79, 0.1); border-color: var(--da
   margin-bottom: 16px;
 }
 
+.tarifa-content {
+  padding-top: 12px;
+}
+
+.tarifa-faixas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tarifa-faixa-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tarifa-sep {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.tarifa-preview {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border-radius: 6px;
+}
+
 .history-list {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -260,6 +290,36 @@ button.danger:hover { background: rgba(226, 96, 79, 0.1); border-color: var(--da
 
 .history-item:last-child {
   border-bottom: none;
+}
+
+.history-item.compare {
+  background: rgba(62, 207, 192, 0.08);
+}
+
+.history-compare {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.history-compare:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.history-compare.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
 }
 
 .history-item:hover {
@@ -461,8 +521,16 @@ tbody tr.danger { background: rgba(226, 96, 79, 0.1); }
   cursor: help;
   line-height: 1;
 }
+.badge-alerta {
+  display: inline-block;
+  font-size: 14px;
+  cursor: help;
+  line-height: 1;
+}
 .th-validacao { width: 40px; text-align: center; }
 .td-validacao { text-align: center; }
+.th-valor { width: 90px; text-align: right; }
+.td-valor { text-align: right; white-space: nowrap; }
 
 .table-wrap {
   max-height: 520px;

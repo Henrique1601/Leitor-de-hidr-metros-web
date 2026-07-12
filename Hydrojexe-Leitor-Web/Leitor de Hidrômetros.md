@@ -111,6 +111,7 @@ graph LR
 - [ ] **Cálculo de tarifa de água** — Configurar faixas de preço (m³) e calcular valor por apartamento
 - [ ] **Alerta de consumo anormal** — Sinalizar apês com consumo 2x acima da média (possível vazamento)
 - [ ] **Relatório de comparação PDF** — PDF bonito comparando 2 períodos lado a lado
+- [ ] Separar os blocos de A ao H por apartamento, por exemplo colocar primeiro do bloco A e depois B etc
 
 ### 📊 Média Prioridade
 
