@@ -96,7 +96,7 @@ graph LR
 
 ### Infraestrutura
 - [x] **CI/CD** — GitHub Actions (lint, test, build)
-- [x] **Testes unitários** — Vitest (11 testes)
+- [x] **Testes unitários** — Vitest (47 testes)
 - [x] **Testes E2E** — Playwright (7 testes)
 - [x] **ESLint 9** — Flat config
 - [x] **Deploy Railway** — Hosting + domínio público
@@ -108,9 +108,9 @@ graph LR
 ### 🎯 Alta Prioridade
 
 - [x] **Entrada manual de índices** — Formulário para digitar índice quando OCR falha ou foto não existe
-- [ ] **Cálculo de tarifa de água** — Configurar faixas de preço (m³) e calcular valor por apartamento
-- [ ] **Alerta de consumo anormal** — Sinalizar apês com consumo 2x acima da média (possível vazamento)
-- [ ] **Relatório de comparação PDF** — PDF bonito comparando 2 períodos lado a lado
+- [x] **Cálculo de tarifa de água** — Configurar faixas de preço (m³) e calcular valor por apartamento
+- [x] **Alerta de consumo anormal** — Sinalizar apês com consumo 2x acima da média (possível vazamento)
+- [x] **Relatório de comparação PDF** — PDF bonito comparando 2 períodos lado a lado
 - [ ] Separar os blocos de A ao H por apartamento, por exemplo colocar primeiro do bloco A e depois B etc
 
 ### 📊 Média Prioridade
