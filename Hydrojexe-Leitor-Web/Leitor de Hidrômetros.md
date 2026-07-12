@@ -96,7 +96,7 @@ graph LR
 
 ### Infraestrutura
 - [x] **CI/CD** — GitHub Actions (lint, test, build)
-- [x] **Testes unitários** — Vitest (47 testes)
+- [x] **Testes unitários** — Vitest (67 testes)
 - [x] **Testes E2E** — Playwright (7 testes)
 - [x] **ESLint 9** — Flat config
 - [x] **Deploy Railway** — Hosting + domínio público
@@ -111,12 +111,12 @@ graph LR
 - [x] **Cálculo de tarifa de água** — Configurar faixas de preço (m³) e calcular valor por apartamento
 - [x] **Alerta de consumo anormal** — Sinalizar apês com consumo 2x acima da média (possível vazamento)
 - [x] **Relatório de comparação PDF** — PDF bonito comparando 2 períodos lado a lado
-- [ ] Separar os blocos de A ao H por apartamento, por exemplo colocar primeiro do bloco A e depois B etc
+- [x] Separar os blocos de A ao H por apartamento, por exemplo colocar primeiro do bloco A e depois B etc
 
 ### 📊 Média Prioridade
 
 - [x] **Importar leituras via XLSX** — Carregar leituras anteriores de planilha existente
-- [ ] **Modo offline completo** — Tesseract como OCR principal sem API externa
+- [x] **Modo offline completo** — Tesseract como OCR principal sem API externa
 - [x] **Backup/Restore** — Exportar/importar histórico completo como JSON
 - [ ] **Multi-usuário com login** — Síndicos/funcionários com seus próprios históricos
 
@@ -195,15 +195,15 @@ graph LR
 - [ ] **Animações de transição** — Framer Motion entre telas
 - [ ] **Dark mode por schedule** — Escuro de noite, claro de dia
 - [ ] **Modo presentation** — Tela cheia para projetor/reunião de síndico
-- [ ] **Customizar colunas da tabela** — Escolher quais colunas mostrar/esconder
+- [x] **Customizar colunas da tabela** — Escolher quais colunas mostrar/esconder
 
 ### 🧪 Qualidade & Segurança
 
 - [x] **Validação de OCR** — Marcar leituras improváveis (ex: índice > 99999)
-- [ ] **Detecção de foto duplicada** — Mesma foto enviada 2 vezes
+- [x] **Detecção de foto duplicada** — Mesma foto enviada 2 vezes
 - [ ] **Criptografia do histórico** — Proteger dados sensíveis no localStorage
 - [ ] **Auditoria** — Log de quem alterou qual índice e quando
-- [ ] **Watermark no PDF** — Marca d'água com data e hora de geração
+- [x] **Watermark no PDF** — Marca d'água com data e hora de geração
 
 ### 🌐 Offline & Performance
 
