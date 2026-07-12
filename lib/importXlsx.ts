@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { GroupedRow } from './results';
+import { aptBlockLabel } from './bloco';
 
 export interface ImportXlsxResult {
   rows: GroupedRow[];
@@ -58,6 +59,7 @@ export function parseXlsx(buffer: ArrayBuffer, fallbackLabel?: string): ImportXl
 
     rows.push({
       apartamento: apt,
+      bloco: aptBlockLabel(apt),
       indice,
       consumo: '',
       confianca: 'N/A',

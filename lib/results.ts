@@ -1,3 +1,6 @@
+import { validarLeitura, formatarValidacao } from './validation';
+import { aptSortKey, aptBlockLabel, formatAptDisplay } from './bloco';
+
 export interface MedidorLeitura {
   posicao: number;
   indiceInteiro: string;
@@ -16,6 +19,7 @@ export interface ExtractResult {
 
 export interface GroupedRow {
   apartamento: string;
+  bloco: string;
   indice: string;
   consumo: string;
   confianca: string;
@@ -23,14 +27,6 @@ export interface GroupedRow {
   arquivos: string;
   validacao?: string;
 }
-
-function aptSortKey(apt: string): [number, number, string] {
-  const m = apt.match(/^(\d+)([A-Za-z]*)$/);
-  if (m) return [0, parseInt(m[1], 10), m[2]];
-  return [1, 0, apt];
-}
-
-import { validarLeitura, formatarValidacao } from './validation';
 
 export function groupByApartment(results: ExtractResult[], previousIndices?: Map<string, string>): GroupedRow[] {
   const byApt = new Map<
@@ -66,12 +62,13 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
   const rows: GroupedRow[] = [];
   for (const apt of semAcesso) {
     const validacao = formatarValidacao(validarLeitura('', '', ''));
-    rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'N/A', observacao: 'Sem acesso ao hidrômetro', arquivos: '', ...(validacao ? { validacao } : {}) });
+    rows.push({ apartamento: apt, bloco: aptBlockLabel(apt), indice: '', consumo: '', confianca: 'N/A', observacao: 'Sem acesso ao hidrômetro', arquivos: '', ...(validacao ? { validacao } : {}) });
   }
 
   for (const [apt, leituras] of byApt.entries()) {
     const valores = new Set(leituras.filter((l) => l.indice).map((l) => l.indice as string));
     const arquivos = leituras.map((l) => l.arquivo).join(', ');
+    const bloco = aptBlockLabel(apt);
     if (valores.size === 1) {
       const indice = Array.from(valores)[0];
       const confs = leituras.filter((l) => l.indice).map((l) => l.confianca);
@@ -80,11 +77,12 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
       if (leituras.length > 1) obs = (obs ? obs + '; ' : '') + `confirmado em ${leituras.length} foto(s)`;
       const consumo = calcularConsumo(apt, indice, previousIndices);
       const validacao = formatarValidacao(validarLeitura(indice, consumo, obs));
-      rows.push({ apartamento: apt, indice, consumo, confianca: conf, observacao: obs, arquivos, ...(validacao ? { validacao } : {}) });
+      rows.push({ apartamento: apt, bloco, indice, consumo, confianca: conf, observacao: obs, arquivos, ...(validacao ? { validacao } : {}) });
     } else if (valores.size > 1) {
       const validacao = formatarValidacao(validarLeitura('', '', 'DIVERGENCIA entre fotos'));
       rows.push({
         apartamento: apt,
+        bloco,
         indice: Array.from(valores).join(' / '),
         consumo: '',
         confianca: 'baixa',
@@ -95,7 +93,7 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
     } else {
       const obs = Array.from(new Set(leituras.map((l) => l.observacao).filter(Boolean))).join('; ');
       const validacao = formatarValidacao(validarLeitura('', '', ''));
-      rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'baixa', observacao: obs || 'não foi possível ler', arquivos, ...(validacao ? { validacao } : {}) });
+      rows.push({ apartamento: apt, bloco, indice: '', consumo: '', confianca: 'baixa', observacao: obs || 'não foi possível ler', arquivos, ...(validacao ? { validacao } : {}) });
     }
   }
 
@@ -103,8 +101,8 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
     const ka = aptSortKey(a.apartamento);
     const kb = aptSortKey(b.apartamento);
     if (ka[0] !== kb[0]) return ka[0] - kb[0];
-    if (ka[1] !== kb[1]) return ka[1] - kb[1];
-    return ka[2].localeCompare(kb[2]);
+    if (ka[2] !== kb[2]) return ka[2] - kb[2];
+    return ka[1].localeCompare(kb[1]);
   });
 
   return rows;

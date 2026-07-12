@@ -833,3 +833,41 @@ td.editable:hover::after {
 }
 .manual-entry-row:last-child { border-bottom: none; }
 .manual-entry-row .mono { min-width: 80px; }
+
+/* Column picker */
+.col-picker-wrap {
+  position: relative;
+  margin-bottom: 8px;
+}
+.col-picker-btn {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+}
+.col-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 160px;
+}
+.col-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+.col-picker-item:hover {
+  background: var(--bg-hover);
+}
+.col-picker-item input[type="checkbox"] {
+  accent-color: var(--accent);
+}

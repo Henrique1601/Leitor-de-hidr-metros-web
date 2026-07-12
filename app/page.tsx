@@ -9,6 +9,8 @@ import { getCachedResult, setCachedResult } from '@/lib/cache';
 import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
 import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, HistoryEntry } from '@/lib/history';
 import { getTarifaConfig, TarifaConfig, calcularTarifa } from '@/lib/tarifa';
+import { loadColumns, saveColumns, ColumnDef } from '@/lib/columns';
+import { extractLocal } from '@/lib/tesseractClient';
 import { exportPdf } from '@/lib/exportPdf';
 import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
@@ -94,11 +96,24 @@ function classifyFiles(files: File[], setChatFile: (f: File | null) => void, set
   if (images.length > 0) {
     setPhotoFiles((prev) => {
       const existing = new Set(prev.map(fileToKey));
-      const merged = [...prev];
+      const newImages: File[] = [];
+      const candidatesByKey = new Map<string, File[]>();
       for (const img of images) {
-        if (!existing.has(fileToKey(img))) merged.push(img);
+        const key = fileToKey(img);
+        if (!existing.has(key)) {
+          const group = candidatesByKey.get(key) || [];
+          group.push(img);
+          candidatesByKey.set(key, group);
+        }
       }
-      return merged;
+      for (const group of candidatesByKey.values()) {
+        if (group.length === 1) {
+          newImages.push(group[0]);
+        } else {
+          newImages.push(group[0]);
+        }
+      }
+      return [...prev, ...newImages];
     });
   }
 }
@@ -124,8 +139,10 @@ export default function Home() {
   const [quotaExhausted, setQuotaExhausted] = useState(false);
   const [quotaResetTime, setQuotaResetTime] = useState<number | null>(null);
   const [manualEntryEnabled, setManualEntryEnabled] = useState(false);
+  const [offlineMode, setOfflineMode] = useState(false);
   const [manualEntries, setManualEntries] = useState<ManualEntry[]>([]);
   const [tarifaConfig, setTarifaConfig] = useState<TarifaConfig>({ faixas: [], fixo: 0 });
+  const [columns, setColumns] = useState<ColumnDef[]>(() => loadColumns());
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, toggle } = useTheme();
@@ -136,9 +153,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    saveColumns(columns);
+  }, [columns]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const saved = localStorage.getItem('manualEntryEnabled');
     if (saved !== null) setManualEntryEnabled(saved === 'true');
+    const savedOffline = localStorage.getItem('offlineMode');
+    if (savedOffline !== null) setOfflineMode(savedOffline === 'true');
     const savedEntries = localStorage.getItem('manualEntries');
     if (savedEntries) {
       try { setManualEntries(JSON.parse(savedEntries)); } catch { /* ignore */ }
@@ -150,6 +173,12 @@ export default function Home() {
       localStorage.setItem('manualEntryEnabled', String(manualEntryEnabled));
     }
   }, [manualEntryEnabled]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('offlineMode', String(offlineMode));
+    }
+  }, [offlineMode]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -285,54 +314,62 @@ export default function Home() {
         try {
           const { base64, mediaType } = await compressImage(file);
           console.log(`[worker] Imagem comprimida: ${row.arquivo} (${base64.length} bytes base64)`);
-          let resp: Response;
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 25000);
-            resp = await fetch('/api/extract', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            console.log(`[worker] Resposta API: ${row.arquivo} status=${resp.status}`);
-          } catch (fetchErr: any) {
-            const msg = fetchErr?.name === 'AbortError'
-              ? 'Timeout: servidor demorou mais de 25s para responder'
-              : `Falha de rede: ${fetchErr?.message}`;
-            console.error(`[worker] Erro de rede: ${row.arquivo}`, msg);
-            setResults((prev) => [
-              ...prev,
-              { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: msg },
-            ]);
-            setDone((d) => d + 1);
-            releaseSlot();
-            continue;
-          }
-          const data = await resp.json();
-          if (!resp.ok) {
-            const isQuota = data.erro?.includes('429') || data.erro?.includes('quota') || data.erro?.includes('Cota');
-            console.error(`[worker] Erro API: ${row.arquivo}`, data.erro);
-            if (isQuota) {
-              setQuotaExhausted(true);
-              setQuotaResetTime(Date.now() + 60 * 60 * 1000);
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('Leitor de Hidrometros', { body: 'Cota do Gemini esgotada. Tente novamente mais tarde.' });
-              }
-            }
-            setResults((prev) => [
-              ...prev,
-              { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: data.erro },
-            ]);
-          } else {
-            console.log(`[worker] Sucesso: ${row.arquivo} (${data.medidores?.length || 0} medidores)`);
-            await setCachedResult(file, {
-              arquivo: data.arquivo,
-              apartamentosEsperados: data.apartamentosEsperados,
-              medidores: data.medidores,
-            });
+
+          if (offlineMode) {
+            console.log(`[worker] Modo offline: processando ${row.arquivo} localmente`);
+            const data = await extractLocal(base64, mediaType, row.apartamentos);
+            data.arquivo = row.arquivo;
             setResults((prev) => [...prev, data]);
+          } else {
+            let resp: Response;
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 25000);
+              resp = await fetch('/api/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ arquivo: row.arquivo, apartamentos: row.apartamentos, imageBase64: base64, mediaType }),
+                signal: controller.signal,
+              });
+              clearTimeout(timeoutId);
+              console.log(`[worker] Resposta API: ${row.arquivo} status=${resp.status}`);
+            } catch (fetchErr: any) {
+              const msg = fetchErr?.name === 'AbortError'
+                ? 'Timeout: servidor demorou mais de 25s para responder'
+                : `Falha de rede: ${fetchErr?.message}`;
+              console.error(`[worker] Erro de rede: ${row.arquivo}`, msg);
+              setResults((prev) => [
+                ...prev,
+                { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: msg },
+              ]);
+              setDone((d) => d + 1);
+              releaseSlot();
+              continue;
+            }
+            const data = await resp.json();
+            if (!resp.ok) {
+              const isQuota = data.erro?.includes('429') || data.erro?.includes('quota') || data.erro?.includes('Cota');
+              console.error(`[worker] Erro API: ${row.arquivo}`, data.erro);
+              if (isQuota) {
+                setQuotaExhausted(true);
+                setQuotaResetTime(Date.now() + 60 * 60 * 1000);
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Leitor de Hidrometros', { body: 'Cota do Gemini esgotada. Tente novamente mais tarde.' });
+                }
+              }
+              setResults((prev) => [
+                ...prev,
+                { arquivo: row.arquivo, apartamentosEsperados: row.apartamentos, medidores: [], erro: data.erro },
+              ]);
+            } else {
+              console.log(`[worker] Sucesso: ${row.arquivo} (${data.medidores?.length || 0} medidores)`);
+              await setCachedResult(file, {
+                arquivo: data.arquivo,
+                apartamentosEsperados: data.apartamentosEsperados,
+                medidores: data.medidores,
+              });
+              setResults((prev) => [...prev, data]);
+            }
           }
         } catch (e: any) {
           console.error(`[worker] Excecao: ${row.arquivo}`, e);
@@ -419,6 +456,7 @@ export default function Home() {
       const valor = !isNaN(consumo) && consumo > 0 && tarifaConfig.faixas.length > 0 ? calcularTarifa(consumo, tarifaConfig) : 0;
       return {
         Apartamento: r.apartamento,
+        Bloco: r.bloco,
         Indice: r.indice,
         Consumo: r.consumo,
         Valor: valor > 0 ? `R$ ${valor.toFixed(2).replace('.', ',')}` : '',
@@ -429,7 +467,7 @@ export default function Home() {
       };
     });
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 40 }, { wch: 45 }];
+    ws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 40 }, { wch: 45 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leituras');
     XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
@@ -489,6 +527,7 @@ export default function Home() {
           dateEnd={dateEnd}
           processing={processing}
           manualEntryEnabled={manualEntryEnabled}
+          offlineMode={offlineMode}
           onChatFileChange={setChatFile}
           onPhotoFilesChange={setPhotoFiles}
           onDateStartChange={setDateStart}
@@ -496,6 +535,7 @@ export default function Home() {
           onProcess={handleProcess}
           onCancel={handleCancel}
           onManualEntryToggle={setManualEntryEnabled}
+          onOfflineModeToggle={setOfflineMode}
         />
 
         <ManualEntryPanel
@@ -532,6 +572,8 @@ export default function Home() {
               photoPreviewMap={photoPreviewMap}
               editingCell={editingCell}
               editValue={editValue}
+              columns={columns}
+              onColumnsChange={setColumns}
               onEdit={handleEdit}
               onEditValueChange={setEditValue}
               onCommitEdit={commitEdit}

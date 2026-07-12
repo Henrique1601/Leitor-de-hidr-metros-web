@@ -45,12 +45,20 @@ export function exportPdf(rows: GroupedRow[], label?: string) {
   });
 
   const pageCount = (doc as any).getNumberOfPages();
+  const now = new Date();
+  const ts = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    doc.setFontSize(50);
+    doc.setTextColor(230, 230, 230);
+    doc.text('HIDROMETRO APP', doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() / 2, {
+      align: 'center',
+      angle: 45,
+    });
     doc.setFontSize(8);
     doc.setTextColor(150);
     doc.text(
-      `Pagina ${i}/${pageCount} — Gerado em ${dateStr}`,
+      `Pagina ${i}/${pageCount} — Gerado em ${dateStr} — ${ts}`,
       doc.internal.pageSize.getWidth() / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: 'center' }

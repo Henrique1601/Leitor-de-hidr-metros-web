@@ -9,6 +9,7 @@ interface InputPanelProps {
   dateEnd: string;
   processing: boolean;
   manualEntryEnabled: boolean;
+  offlineMode: boolean;
   onChatFileChange: (file: File | null) => void;
   onPhotoFilesChange: (files: File[]) => void;
   onDateStartChange: (date: string) => void;
@@ -16,6 +17,7 @@ interface InputPanelProps {
   onProcess: () => void;
   onCancel: () => void;
   onManualEntryToggle: (enabled: boolean) => void;
+  onOfflineModeToggle: (enabled: boolean) => void;
 }
 
 function InputPanelInner({
@@ -25,6 +27,7 @@ function InputPanelInner({
   dateEnd,
   processing,
   manualEntryEnabled,
+  offlineMode,
   onChatFileChange,
   onPhotoFilesChange,
   onDateStartChange,
@@ -32,6 +35,7 @@ function InputPanelInner({
   onProcess,
   onCancel,
   onManualEntryToggle,
+  onOfflineModeToggle,
 }: InputPanelProps) {
   const canProcess = useMemo(() => chatFile && photoFiles.length > 0 && !processing, [chatFile, photoFiles, processing]);
 
@@ -76,7 +80,7 @@ function InputPanelInner({
       </div>
       <div className="button-row">
         <button className="primary" onClick={onProcess} disabled={!canProcess} aria-label={processing ? 'Processando fotos...' : 'Processar fotos'}>
-          {processing ? 'Processando...' : 'Processar fotos'}
+          {processing ? 'Processando...' : offlineMode ? 'Processar offline' : 'Processar fotos'}
         </button>
         {processing && (
           <button className="danger" onClick={onCancel} aria-label="Cancelar processamento">
@@ -94,6 +98,18 @@ function InputPanelInner({
             <span className="toggle-track" />
           </span>
           <span className="toggle-text">Entrada manual</span>
+        </label>
+        <label className="toggle-label" title="Modo offline — processa fotos localmente sem enviar para API">
+          <span className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={offlineMode}
+              onChange={(e) => onOfflineModeToggle(e.target.checked)}
+              aria-label="Modo offline"
+            />
+            <span className="toggle-track" />
+          </span>
+          <span className="toggle-text">Offline</span>
         </label>
       </div>
     </section>
