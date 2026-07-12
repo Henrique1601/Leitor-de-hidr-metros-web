@@ -51,6 +51,7 @@ export default function ResultsTable({
               <th>Consumo</th>
               <th>Confianca</th>
               <th>Observacao</th>
+              <th className="th-validacao">Validacao</th>
               <th className="th-preview">Foto</th>
             </tr>
           </thead>
@@ -98,6 +99,13 @@ export default function ResultsTable({
                     <span className={'badge ' + r.confianca.toLowerCase()}>{r.confianca}</span>
                   </td>
                   <td>{r.observacao || '---'}</td>
+                  <td className="td-validacao">
+                    {r.validacao && (
+                      <span className="badge-validacao" title={r.validacao}>
+                        {r.validacao.includes('critico') || r.validacao.includes('🔴') ? '🔴' : '⚠️'}
+                      </span>
+                    )}
+                  </td>
                   <td className="td-preview">
                     {thumbUrl && (
                       <div className="thumb-wrap">

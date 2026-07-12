@@ -12,6 +12,7 @@ import { exportPdf } from '@/lib/exportPdf';
 import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
 import ManualEntryPanel, { ManualEntry } from '@/components/ManualEntryPanel';
+import HistoryPanel from '@/components/HistoryPanel';
 import ProgressBar from '@/components/ProgressBar';
 import SkeletonLoading from '@/components/SkeletonLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -414,19 +415,20 @@ export default function Home() {
       Consumo: r.consumo,
       Confianca: r.confianca,
       Observacao: r.observacao,
+      Validacao: r.validacao || '',
       'Arquivo(s)': r.arquivos,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 45 }];
+    ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 40 }, { wch: 45 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leituras');
     XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }, [groupedRows]);
 
   const handleExportCsv = useCallback(() => {
-    const header = 'Apartamento,Indice,Consumo,Confianca,Observacao,Arquivo(s)';
+    const header = 'Apartamento,Indice,Consumo,Confianca,Observacao,Validacao,Arquivo(s)';
     const csvRows = groupedRows.map((r) =>
-      [r.apartamento, r.indice, r.consumo, r.confianca, `"${r.observacao.replace(/"/g, '""')}"`, `"${r.arquivos.replace(/"/g, '""')}"`].join(',')
+      [r.apartamento, r.indice, r.consumo, r.confianca, `"${r.observacao.replace(/"/g, '""')}"`, `"${(r.validacao || '').replace(/"/g, '""')}"`, `"${r.arquivos.replace(/"/g, '""')}"`].join(',')
     );
     const csv = [header, ...csvRows].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -531,64 +533,17 @@ export default function Home() {
         )}
 
         {groupedRows.length > 0 && (
-          <section className="panel" aria-label="Historico de leituras">
-            <div className="panel-title">Historico</div>
-            <div className="history-save">
-              <input
-                type="text"
-                className="inline-edit"
-                placeholder="Label (ex: Julho 2026)"
-                value={historyLabel}
-                onChange={(e) => setHistoryLabel(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveHistory();
-                }}
-                style={{ flex: 1 }}
-                aria-label="Label do periodo"
-              />
-              <button className="secondary" onClick={handleSaveHistory} aria-label="Salvar leitura no historico">
-                Salvar no historico
-              </button>
-            </div>
-            {history.length > 0 && (
-              <div className="history-list">
-                <div className="history-item header">
-                  <span>Periodo</span>
-                  <span>Data</span>
-                  <span>Apts</span>
-                  <span></span>
-                </div>
-                {history.map((entry) => {
-                  const date = new Date(entry.date).toLocaleDateString('pt-BR');
-                  const isSelected = selectedHistoryId === entry.id;
-                  return (
-                    <div
-                      key={entry.id}
-                      className={'history-item' + (isSelected ? ' selected' : '')}
-                      onClick={() => setSelectedHistoryId(isSelected ? null : entry.id)}
-                    >
-                      <span className="mono">{entry.label}</span>
-                      <span className="history-date">{date}</span>
-                      <span>{entry.rows.length}</span>
-                      <button
-                        className="history-delete"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteHistory(entry.id);
-                        }}
-                        title="Remover"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {selectedHistoryId && (
-              <div className="history-hint">Consumo calculado em relacao ao periodo selecionado acima</div>
-            )}
-          </section>
+          <HistoryPanel
+            history={history}
+            selectedHistoryId={selectedHistoryId}
+            historyLabel={historyLabel}
+            groupedRowsCount={groupedRows.length}
+            onSelect={setSelectedHistoryId}
+            onDelete={handleDeleteHistory}
+            onSave={handleSaveHistory}
+            onLabelChange={setHistoryLabel}
+            onHistoryChange={() => setHistory(getHistory())}
+          />
         )}
       </main>
     </ErrorBoundary>

@@ -21,6 +21,7 @@ export interface GroupedRow {
   confianca: string;
   observacao: string;
   arquivos: string;
+  validacao?: string;
 }
 
 function aptSortKey(apt: string): [number, number, string] {
@@ -28,6 +29,8 @@ function aptSortKey(apt: string): [number, number, string] {
   if (m) return [0, parseInt(m[1], 10), m[2]];
   return [1, 0, apt];
 }
+
+import { validarLeitura, formatarValidacao } from './validation';
 
 export function groupByApartment(results: ExtractResult[], previousIndices?: Map<string, string>): GroupedRow[] {
   const byApt = new Map<
@@ -62,7 +65,8 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
 
   const rows: GroupedRow[] = [];
   for (const apt of semAcesso) {
-    rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'N/A', observacao: 'Sem acesso ao hidrômetro', arquivos: '' });
+    const validacao = formatarValidacao(validarLeitura('', '', ''));
+    rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'N/A', observacao: 'Sem acesso ao hidrômetro', arquivos: '', ...(validacao ? { validacao } : {}) });
   }
 
   for (const [apt, leituras] of byApt.entries()) {
@@ -75,8 +79,10 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
       let obs = Array.from(new Set(leituras.map((l) => l.observacao).filter(Boolean))).join('; ');
       if (leituras.length > 1) obs = (obs ? obs + '; ' : '') + `confirmado em ${leituras.length} foto(s)`;
       const consumo = calcularConsumo(apt, indice, previousIndices);
-      rows.push({ apartamento: apt, indice, consumo, confianca: conf, observacao: obs, arquivos });
+      const validacao = formatarValidacao(validarLeitura(indice, consumo, obs));
+      rows.push({ apartamento: apt, indice, consumo, confianca: conf, observacao: obs, arquivos, ...(validacao ? { validacao } : {}) });
     } else if (valores.size > 1) {
+      const validacao = formatarValidacao(validarLeitura('', '', 'DIVERGENCIA entre fotos'));
       rows.push({
         apartamento: apt,
         indice: Array.from(valores).join(' / '),
@@ -84,10 +90,12 @@ export function groupByApartment(results: ExtractResult[], previousIndices?: Map
         confianca: 'baixa',
         observacao: 'DIVERGÊNCIA entre fotos - revisar manualmente',
         arquivos,
+        ...(validacao ? { validacao } : {}),
       });
     } else {
       const obs = Array.from(new Set(leituras.map((l) => l.observacao).filter(Boolean))).join('; ');
-      rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'baixa', observacao: obs || 'não foi possível ler', arquivos });
+      const validacao = formatarValidacao(validarLeitura('', '', ''));
+      rows.push({ apartamento: apt, indice: '', consumo: '', confianca: 'baixa', observacao: obs || 'não foi possível ler', arquivos, ...(validacao ? { validacao } : {}) });
     }
   }
 

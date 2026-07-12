@@ -75,4 +75,27 @@ describe('groupByApartment', () => {
     const grouped = groupByApartment(results);
     expect(grouped[0].indice).toBe('12345,678');
   });
+
+  it('populates validacao when indice > 99999', () => {
+    const results = [makeResult(['101'], ['100000'])];
+    const grouped = groupByApartment(results);
+    expect(grouped[0].validacao).toBeDefined();
+    expect(grouped[0].validacao).toContain('Indice');
+  });
+
+  it('does not set validacao for normal readings', () => {
+    const results = [makeResult(['101'], ['12345'])];
+    const grouped = groupByApartment(results);
+    expect(grouped[0].validacao).toBeUndefined();
+  });
+
+  it('sets validacao for divergence rows', () => {
+    const results = [
+      makeResult(['101'], ['12345'], 'foto1.jpg'),
+      makeResult(['101'], ['12399'], 'foto2.jpg'),
+    ];
+    const grouped = groupByApartment(results);
+    expect(grouped[0].validacao).toBeDefined();
+    expect(grouped[0].validacao).toContain('Divergencia');
+  });
 });

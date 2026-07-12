@@ -114,9 +114,9 @@ graph LR
 
 ### 📊 Média Prioridade
 
-- [ ] **Importar leituras via XLSX** — Carregar leituras anteriores de planilha existente
+- [x] **Importar leituras via XLSX** — Carregar leituras anteriores de planilha existente
 - [ ] **Modo offline completo** — Tesseract como OCR principal sem API externa
-- [ ] **Backup/Restore** — Exportar/importar histórico completo como JSON
+- [x] **Backup/Restore** — Exportar/importar histórico completo como JSON
 - [ ] **Multi-usuário com login** — Síndicos/funcionários com seus próprios históricos
 
 ### 🚀 Baixa Prioridade
@@ -198,7 +198,7 @@ graph LR
 
 ### 🧪 Qualidade & Segurança
 
-- [ ] **Validação de OCR** — Marcar leituras improváveis (ex: índice > 99999)
+- [x] **Validação de OCR** — Marcar leituras improváveis (ex: índice > 99999)
 - [ ] **Detecção de foto duplicada** — Mesma foto enviada 2 vezes
 - [ ] **Criptografia do histórico** — Proteger dados sensíveis no localStorage
 - [ ] **Auditoria** — Log de quem alterou qual índice e quando

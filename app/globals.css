@@ -234,6 +234,12 @@ button.danger:hover { background: rgba(226, 96, 79, 0.1); border-color: var(--da
   margin-bottom: 16px;
 }
 
+.history-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .history-list {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -448,6 +454,15 @@ tbody tr.danger { background: rgba(226, 96, 79, 0.1); }
 .badge.media { background: rgba(232, 163, 61, 0.15); color: var(--warn); }
 .badge.baixa { background: rgba(226, 96, 79, 0.15); color: var(--danger); }
 .badge.na { background: var(--panel-2); color: var(--text-dim); }
+
+.badge-validacao {
+  display: inline-block;
+  font-size: 14px;
+  cursor: help;
+  line-height: 1;
+}
+.th-validacao { width: 40px; text-align: center; }
+.td-validacao { text-align: center; }
 
 .table-wrap {
   max-height: 520px;

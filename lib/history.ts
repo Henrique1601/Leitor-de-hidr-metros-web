@@ -19,10 +19,10 @@ export function getHistory(): HistoryEntry[] {
   }
 }
 
-export function saveToHistory(label: string, rows: GroupedRow[]): HistoryEntry {
+export function saveToHistory(label: string, rows: GroupedRow[], originalDate?: string): HistoryEntry {
   const entry: HistoryEntry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    date: new Date().toISOString(),
+    date: originalDate || new Date().toISOString(),
     label,
     rows: rows.map((r) => ({ ...r })),
   };

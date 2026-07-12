@@ -78,6 +78,23 @@
 
 </td>
 </tr>
+<tr>
+<td>
+
+### Histórico & Backup
+- **Backup/Restore** — Exportar/importar histórico completo como JSON
+- **Importar XLSX** — Carregar leituras anteriores de planilha (.xlsx/.csv)
+- **Entrada manual** — Formulário para digitar índice quando OCR falha
+
+</td>
+<td>
+
+### Qualidade
+- **Validação de OCR** — Marcar leituras improváveis (índice > 99.999, consumo negativo/anormal)
+- **Detecção de divergência** — Sinaliza conflito entre fotos do mesmo apartamento
+
+</td>
+</tr>
 </table>
 
 ---
