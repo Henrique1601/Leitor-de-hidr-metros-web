@@ -96,7 +96,7 @@ graph LR
 
 ### Infraestrutura
 - [x] **CI/CD** — GitHub Actions (lint, test, build)
-- [x] **Testes unitários** — Vitest (67 testes)
+- [x] **Testes unitários** — Vitest (85 testes)
 - [x] **Testes E2E** — Playwright (7 testes)
 - [x] **ESLint 9** — Flat config
 - [x] **Deploy Railway** — Hosting + domínio público
@@ -191,9 +191,9 @@ graph LR
 ### 🎨 UX Premium
 
 - [ ] **Onboarding interativo** — Tutorial passo a passo na primeira vez
-- [ ] **Temas personalizados** — Usuário escolhe cores do app
+- [x] **Temas personalizados** — Usuário escolhe cores do app (7 paletas + hex custom)
 - [ ] **Animações de transição** — Framer Motion entre telas
-- [ ] **Dark mode por schedule** — Escuro de noite, claro de dia
+- [x] **Dark mode por schedule** — Escuro de noite, claro de dia (fixo + geolocalização)
 - [ ] **Modo presentation** — Tela cheia para projetor/reunião de síndico
 - [x] **Customizar colunas da tabela** — Escolher quais colunas mostrar/esconder
 
