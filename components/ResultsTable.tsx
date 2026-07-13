@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { GroupedRow } from '@/lib/results';
 import type { ColumnDef } from '@/lib/columns';
 import { TarifaConfig, calcularTarifa, formatarMoeda } from '@/lib/tarifa';
+import { BuildingState, getActiveBuilding } from '@/lib/building';
 
 interface ResultsTableProps {
   groupedRows: GroupedRow[];
@@ -12,6 +13,7 @@ interface ResultsTableProps {
   editingCell: { apt: string; field: string } | null;
   editValue: string;
   columns: ColumnDef[];
+  buildingState: BuildingState;
   onColumnsChange: (columns: ColumnDef[]) => void;
   onEdit: (apt: string, field: string, currentValue: string) => void;
   onEditValueChange: (value: string) => void;
@@ -31,6 +33,7 @@ export default function ResultsTable({
   editingCell,
   editValue,
   columns,
+  buildingState,
   onColumnsChange,
   onEdit,
   onEditValueChange,
@@ -43,6 +46,7 @@ export default function ResultsTable({
   shareCopied,
 }: ResultsTableProps) {
   const [showColPicker, setShowColPicker] = useState(false);
+  const hasActiveBuilding = !!getActiveBuilding(buildingState);
 
   const reviewCount = useMemo(
     () => groupedRows.filter((r) => r.confianca === 'baixa' || r.observacao.includes('DIVERGENCIA')).length,
@@ -74,8 +78,9 @@ export default function ResultsTable({
   const vis = useMemo(() => {
     const m: Record<string, boolean> = {};
     for (const c of columns) m[c.id] = c.visible;
+    if (hasActiveBuilding) m['bloco'] = true;
     return m;
-  }, [columns]);
+  }, [columns, hasActiveBuilding]);
 
   function toggleCol(id: string) {
     onColumnsChange(columns.map((c) => (c.id === id ? { ...c, visible: !c.visible } : c)));

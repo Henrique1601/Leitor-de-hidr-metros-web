@@ -165,8 +165,8 @@ graph LR
 
 ### 🏢 Gestão de Prédios
 
-- [ ] **Multi-prédio** — Gerenciar vários condomínios no mesmo app
-- [ ] **Estrutura do prédio** — Configurar andares, bloco, quantidade de apts
+- [x] **Multi-prédio** — Gerenciar vários condomínios no mesmo app
+- [x] **Estrutura do prédio** — Configurar andares, bloco, quantidade de apts
 - [ ] **Tarifa progressiva** — Configurar faixas de preço por faixa de consumo
 - [ ] **Rateio de água** — Calcular rateio comum + individual
 - [ ] **Histórico por bloco** — Agrupar por bloco além de apartamento
@@ -208,11 +208,11 @@ graph LR
 
 ### 🌐 Offline & Performance
 
-- [ ] **Service Worker avançado** — Cache de imagens também
-- [ ] **WebAssembly OCR** — Tesseract otimizado com WASM SIMD
-- [ ] **Processamento em Web Worker** — Não travar a UI durante OCR
-- [ ] **Lazy load de imagens** — Carregar fotos sob demanda
-- [ ] **Compressão server-side** — Mover compressão para API route
+- [x] **Service Worker avançado** — Cache de imagens com LRU, stale-while-revalidate, network-first pages
+- [x] **WebAssembly OCR** — Tesseract otimizado com WASM SIMD
+- [x] **Processamento em Web Worker** — OCR off-thread via `lib/ocrWorker.worker.ts`
+- [x] **Lazy load de imagens** — IntersectionObserver via `components/LazyImage.tsx`
+- [x] **Compressão server-side** — `/api/compress` route com fallback client-side
 
 ---
 

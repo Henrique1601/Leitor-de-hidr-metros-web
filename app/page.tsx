@@ -27,6 +27,9 @@ import ThemeSettingsPanel from '@/components/ThemeSettingsPanel';
 import OnboardingOverlay, { hasSeenOnboarding, markOnboardingSeen } from '@/components/OnboardingOverlay';
 import PresentationMode, { PresentationToggle } from '@/components/PresentationMode';
 import { FadeInSection, SlideIn, StaggerChildren, StaggerItem } from '@/components/AnimatedSection';
+import BuildingSelector from '@/components/BuildingSelector';
+import BuildingManager from '@/components/BuildingManager';
+import { BuildingState, loadBuildings, migrateToBuildings } from '@/lib/building';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -172,6 +175,8 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [buildingState, setBuildingState] = useState<BuildingState>({ buildings: [], activeBuildingId: null });
+  const [showBuildingManager, setShowBuildingManager] = useState(false);
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, resolvedTheme, settings, updateSettings } = useTheme();
@@ -180,6 +185,7 @@ export default function Home() {
     setHistory(getHistory());
     setTarifaConfig(getTarifaConfig());
     if (!hasSeenOnboarding()) setShowOnboarding(true);
+    setBuildingState(migrateToBuildings());
   }, []);
 
   useEffect(() => {
@@ -551,6 +557,22 @@ export default function Home() {
       <ThemeSettingsPanel />
       <PresentationToggle enabled={presentationMode} onToggle={() => setPresentationMode(!presentationMode)} />
 
+      <div className="topbar-right">
+        <BuildingSelector
+          state={buildingState}
+          onChange={setBuildingState}
+          onManage={() => setShowBuildingManager(true)}
+        />
+      </div>
+
+      {showBuildingManager && (
+        <BuildingManager
+          state={buildingState}
+          onChange={setBuildingState}
+          onClose={() => setShowBuildingManager(false)}
+        />
+      )}
+
       <AnimatePresence>
         {showScrollTop && (
           <motion.button
@@ -589,6 +611,7 @@ export default function Home() {
               processing={processing}
               manualEntryEnabled={manualEntryEnabled}
               offlineMode={offlineMode}
+              buildingState={buildingState}
               onChatFileChange={setChatFile}
               onPhotoFilesChange={setPhotoFiles}
               onDateStartChange={setDateStart}
@@ -619,6 +642,7 @@ export default function Home() {
                   editingCell={editingCell}
                   editValue={editValue}
                   columns={columns}
+                  buildingState={buildingState}
                   onColumnsChange={setColumns}
                   onEdit={handleEdit}
                   onEditValueChange={setEditValue}
@@ -669,6 +693,7 @@ export default function Home() {
               processing={processing}
               manualEntryEnabled={manualEntryEnabled}
               offlineMode={offlineMode}
+              buildingState={buildingState}
               onChatFileChange={setChatFile}
               onPhotoFilesChange={setPhotoFiles}
               onDateStartChange={setDateStart}
@@ -724,6 +749,7 @@ export default function Home() {
                   editingCell={editingCell}
                   editValue={editValue}
                   columns={columns}
+                  buildingState={buildingState}
                   onColumnsChange={setColumns}
                   onEdit={handleEdit}
                   onEditValueChange={setEditValue}

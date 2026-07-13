@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { BuildingState, getActiveBuilding, totalApts } from '@/lib/building';
 
 interface InputPanelProps {
   chatFile: File | null;
@@ -10,6 +11,7 @@ interface InputPanelProps {
   processing: boolean;
   manualEntryEnabled: boolean;
   offlineMode: boolean;
+  buildingState: BuildingState;
   onChatFileChange: (file: File | null) => void;
   onPhotoFilesChange: (files: File[]) => void;
   onDateStartChange: (date: string) => void;
@@ -28,6 +30,7 @@ function InputPanelInner({
   processing,
   manualEntryEnabled,
   offlineMode,
+  buildingState,
   onChatFileChange,
   onPhotoFilesChange,
   onDateStartChange,
@@ -38,10 +41,22 @@ function InputPanelInner({
   onOfflineModeToggle,
 }: InputPanelProps) {
   const canProcess = useMemo(() => chatFile && photoFiles.length > 0 && !processing, [chatFile, photoFiles, processing]);
+  const activeBuilding = getActiveBuilding(buildingState);
 
   return (
     <section className="panel" aria-label="Entrada de dados">
       <div className="panel-title">Entrada</div>
+      {activeBuilding && (
+        <div className="building-context-bar">
+          <span className="building-context-icon">🏢</span>
+          <span className="building-context-text">
+            {activeBuilding.nome}{' '}
+            <span className="building-context-detail">
+              · {activeBuilding.blocos.length} {activeBuilding.blocos.length === 1 ? 'bloco' : 'blocos'} · {totalApts(activeBuilding)} {totalApts(activeBuilding) === 1 ? 'apartamento' : 'apartamentos'}
+            </span>
+          </span>
+        </div>
+      )}
       <div className="row" style={{ marginBottom: 16 }}>
         <div className="dropzone">
           <div>
