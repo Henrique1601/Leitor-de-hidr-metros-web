@@ -190,12 +190,13 @@ graph LR
 
 ### 🎨 UX Premium
 
-- [ ] **Onboarding interativo** — Tutorial passo a passo na primeira vez
+- [x] **Onboarding interativo** — Tutorial passo a passo na primeira vez (Framer Motion)
 - [x] **Temas personalizados** — Usuário escolhe cores do app (7 paletas + hex custom)
-- [ ] **Animações de transição** — Framer Motion entre telas
+- [x] **Animações de transição** — Framer Motion entre telas (FadeIn, SlideIn, Stagger)
 - [x] **Dark mode por schedule** — Escuro de noite, claro de dia (fixo + geolocalização)
-- [ ] **Modo presentation** — Tela cheia para projetor/reunião de síndico
+- [x] **Modo presentation** — Tela cheia para projetor/reunião de síndico (fullscreen)
 - [x] **Customizar colunas da tabela** — Escolher quais colunas mostrar/esconder
+- [x] **Modo uma mão** — Bottom bar com atalhos para mobile
 
 ### 🧪 Qualidade & Segurança
 
