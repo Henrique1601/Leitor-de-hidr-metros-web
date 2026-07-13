@@ -1,5 +1,3 @@
-import type { ExtractResult } from './results';
-
 let workerPromise: Promise<any> | null = null;
 
 async function getWorker() {
@@ -20,7 +18,7 @@ export async function extractLocal(
   base64: string,
   mediaType: string,
   apartamentos: string[]
-): Promise<ExtractResult> {
+): Promise<import('./results').ExtractResult> {
   const worker = await getWorker();
   const { data } = await worker.recognize(`data:${mediaType};base64,${base64}`);
 
@@ -40,4 +38,56 @@ export async function extractLocal(
       observacao: '',
     })),
   };
+}
+
+let ocrWorker: Worker | null = null;
+let ocrCallbacks = new Map<string, {
+  resolve: (result: import('./results').ExtractResult) => void;
+  reject: (err: Error) => void;
+}>();
+
+function getOcrWorker(): Worker {
+  if (ocrWorker) return ocrWorker;
+
+  ocrWorker = new Worker(
+    new URL('./ocrWorker.worker.ts', import.meta.url),
+    { type: 'module' }
+  );
+
+  ocrWorker.onmessage = (e: MessageEvent) => {
+    const { id, result, error } = e.data;
+    const cb = ocrCallbacks.get(id);
+    if (!cb) return;
+    ocrCallbacks.delete(id);
+
+    if (error) {
+      cb.reject(new Error(error));
+    } else {
+      cb.resolve(result);
+    }
+  };
+
+  return ocrWorker;
+}
+
+export function extractLocalWorker(
+  base64: string,
+  mediaType: string,
+  apartamentos: string[]
+): Promise<import('./results').ExtractResult> {
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const worker = getOcrWorker();
+
+  return new Promise((resolve, reject) => {
+    ocrCallbacks.set(id, { resolve, reject });
+    worker.postMessage({ id, base64, mediaType, apartamentos });
+  });
+}
+
+export function terminateOcrWorker() {
+  if (ocrWorker) {
+    ocrWorker.terminate();
+    ocrWorker = null;
+  }
+  ocrCallbacks.clear();
 }

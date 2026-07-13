@@ -11,7 +11,7 @@ import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
 import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, HistoryEntry } from '@/lib/history';
 import { getTarifaConfig, TarifaConfig, calcularTarifa } from '@/lib/tarifa';
 import { loadColumns, saveColumns, ColumnDef } from '@/lib/columns';
-import { extractLocal } from '@/lib/tesseractClient';
+import { extractLocalWorker } from '@/lib/tesseractClient';
 import { exportPdf } from '@/lib/exportPdf';
 import { copyShareLink, decodeShareUrl } from '@/lib/shareLink';
 import InputPanel from '@/components/InputPanel';
@@ -31,9 +31,30 @@ import { FadeInSection, SlideIn, StaggerChildren, StaggerItem } from '@/componen
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
 const CONCURRENCY = 2;
-const MAX_DIM = 1600;
 
-function compressImage(file: File): Promise<{ base64: string; mediaType: string }> {
+async function compressImageServerSide(file: File): Promise<{ base64: string; mediaType: string }> {
+  const reader = new FileReader()
+  const base64 = await new Promise<string>((resolve) => {
+    reader.onload = () => resolve((reader.result as string).split(',')[1])
+    reader.readAsDataURL(file)
+  })
+
+  try {
+    const resp = await fetch('/api/compress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
+    })
+    if (!resp.ok) throw new Error('compressao server falhou')
+    const data = await resp.json()
+    return { base64: data.compressed, mediaType: data.mediaType }
+  } catch {
+    return compressImageClientSide(file)
+  }
+}
+
+function compressImageClientSide(file: File): Promise<{ base64: string; mediaType: string }> {
+  const MAX_DIM = 1600
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -329,12 +350,12 @@ export default function Home() {
         }
         await acquireSlot();
         try {
-          const { base64, mediaType } = await compressImage(file);
+          const { base64, mediaType } = await compressImageServerSide(file);
           console.log(`[worker] Imagem comprimida: ${row.arquivo} (${base64.length} bytes base64)`);
 
           if (offlineMode) {
-            console.log(`[worker] Modo offline: processando ${row.arquivo} localmente`);
-            const data = await extractLocal(base64, mediaType, row.apartamentos);
+            console.log(`[worker] Modo offline: processando ${row.arquivo} localmente via Web Worker`);
+            const data = await extractLocalWorker(base64, mediaType, row.apartamentos);
             data.arquivo = row.arquivo;
             setResults((prev) => [...prev, data]);
           } else {

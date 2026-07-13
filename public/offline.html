@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline — Leitor de Hidrometros</title>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #0a0f14; --panel: #111820; --border: #223040;
+      --text: #dce6ee; --text-dim: #7f93a3; --accent: #3ecfc0;
+    }
+    [data-theme="light"] {
+      --bg: #f5f7fa; --panel: #ffffff; --border: #dde2e8;
+      --text: #1a2332; --text-dim: #6b7b8d; --accent: #0d9b8a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 48px 32px; text-align: center;
+      max-width: 400px; width: 100%;
+    }
+    .icon { font-size: 64px; margin-bottom: 24px; line-height: 1; }
+    h1 { font-size: 22px; margin-bottom: 12px; }
+    p { color: var(--text-dim); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+    button {
+      background: var(--accent); color: #05201d; border: none;
+      font-weight: 600; font-size: 14px; padding: 12px 24px;
+      border-radius: 8px; cursor: pointer;
+    }
+    button:hover { filter: brightness(1.08); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>Voce esta offline</h1>
+    <p>
+      Sem conexao com a internet. O modo offline com Tesseract continua
+      funcionando para processar fotos ja enviadas.
+    </p>
+    <button onclick="location.reload()">Tentar novamente</button>
+  </div>
+</body>
+</html>
