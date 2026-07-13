@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { parseChat, PhotoIndexRow } from '@/lib/parseChat';
 import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
@@ -23,6 +24,9 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { useTheme } from '@/components/ThemeProvider';
 import { Dashboard } from '@/components/Dashboard';
 import ThemeSettingsPanel from '@/components/ThemeSettingsPanel';
+import OnboardingOverlay, { hasSeenOnboarding, markOnboardingSeen } from '@/components/OnboardingOverlay';
+import PresentationMode, { PresentationToggle } from '@/components/PresentationMode';
+import { FadeInSection, SlideIn, StaggerChildren, StaggerItem } from '@/components/AnimatedSection';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -144,6 +148,9 @@ export default function Home() {
   const [manualEntries, setManualEntries] = useState<ManualEntry[]>([]);
   const [tarifaConfig, setTarifaConfig] = useState<TarifaConfig>({ faixas: [], fixo: 0 });
   const [columns, setColumns] = useState<ColumnDef[]>(() => loadColumns());
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, resolvedTheme, settings, updateSettings } = useTheme();
@@ -151,6 +158,15 @@ export default function Home() {
   useEffect(() => {
     setHistory(getHistory());
     setTarifaConfig(getTarifaConfig());
+    if (!hasSeenOnboarding()) setShowOnboarding(true);
+  }, []);
+
+  useEffect(() => {
+    function onScroll() {
+      setShowScrollTop(window.scrollY > 400);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
@@ -504,102 +520,255 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
+      {showOnboarding && (
+        <OnboardingOverlay onComplete={() => {
+          markOnboardingSeen();
+          setShowOnboarding(false);
+        }} />
+      )}
+
       <ThemeSettingsPanel />
-      <main
-        className={'shell' + (dragOver ? ' drag-active' : '')}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {dragOver && <div className="drag-overlay">Solte os arquivos aqui</div>}
+      <PresentationToggle enabled={presentationMode} onToggle={() => setPresentationMode(!presentationMode)} />
 
-        <div className="hero">
-          <span className="hero-mark" />
-          <h1>Leitor de Hidrometros</h1>
-        </div>
-        <p className="subtitle">Fotos do WhatsApp - indice de cada apartamento - planilha, sem digitar nada na mao.</p>
-
-        <InputPanel
-          chatFile={chatFile}
-          photoFiles={photoFiles}
-          dateStart={dateStart}
-          dateEnd={dateEnd}
-          processing={processing}
-          manualEntryEnabled={manualEntryEnabled}
-          offlineMode={offlineMode}
-          onChatFileChange={setChatFile}
-          onPhotoFilesChange={setPhotoFiles}
-          onDateStartChange={setDateStart}
-          onDateEndChange={setDateEnd}
-          onProcess={handleProcess}
-          onCancel={handleCancel}
-          onManualEntryToggle={setManualEntryEnabled}
-          onOfflineModeToggle={setOfflineMode}
-        />
-
-        <ManualEntryPanel
-          enabled={manualEntryEnabled}
-          entries={manualEntries}
-          onAdd={handleAddManualEntry}
-          onRemove={handleRemoveManualEntry}
-        />
-
-        <TarifaPanel onConfigChange={setTarifaConfig} />
-
-        {quotaExhausted && (
-          <div className="quota-warning visible" role="alert">
-            Cota do Gemini esgotada. As proximas imagens serao processadas por OCR local (Tesseract).
-            {quotaResetTime && ` Reset estimado: ${new Date(quotaResetTime).toLocaleTimeString('pt-BR')}.`}
-          </div>
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            className="scroll-top-fab"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label="Voltar ao topo"
+          >
+            ↑
+          </motion.button>
         )}
+      </AnimatePresence>
 
-        {processing && total === 0 && <SkeletonLoading />}
+      {presentationMode ? (
+        <div className="presentation-mode">
+          <div className="presentation-topbar">
+            <span className="presentation-badge">MODO APRESENTAÇÃO</span>
+            <button className="presentation-exit" onClick={() => setPresentationMode(false)}>
+              ✕ Sair (Esc)
+            </button>
+          </div>
+          <div className="presentation-content">
+            <div className="hero">
+              <span className="hero-mark" />
+              <h1>Leitor de Hidrometros</h1>
+            </div>
+            <p className="subtitle">Fotos do WhatsApp - indice de cada apartamento - planilha, sem digitar nada na mao.</p>
 
-        {(processing || total > 0) && <ProgressBar done={done} total={total} />}
+            <InputPanel
+              chatFile={chatFile}
+              photoFiles={photoFiles}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
+              processing={processing}
+              manualEntryEnabled={manualEntryEnabled}
+              offlineMode={offlineMode}
+              onChatFileChange={setChatFile}
+              onPhotoFilesChange={setPhotoFiles}
+              onDateStartChange={setDateStart}
+              onDateEndChange={setDateEnd}
+              onProcess={handleProcess}
+              onCancel={handleCancel}
+              onManualEntryToggle={setManualEntryEnabled}
+              onOfflineModeToggle={setOfflineMode}
+            />
 
-        {groupedRows.length > 0 && (
-          <>
-            {sharedLabel && (
-              <div className="shared-banner">
-                Resultado compartilhado: <strong>{sharedLabel}</strong>
+            {quotaExhausted && (
+              <div className="quota-warning visible" role="alert">
+                Cota do Gemini esgotada.
+                {quotaResetTime && ` Reset estimado: ${new Date(quotaResetTime).toLocaleTimeString('pt-BR')}.`}
               </div>
             )}
-            <Dashboard rows={groupedRows} />
-            <ResultsTable
-              groupedRows={groupedRows}
-              tarifaConfig={tarifaConfig}
-              photoPreviewMap={photoPreviewMap}
-              editingCell={editingCell}
-              editValue={editValue}
-              columns={columns}
-              onColumnsChange={setColumns}
-              onEdit={handleEdit}
-              onEditValueChange={setEditValue}
-              onCommitEdit={commitEdit}
-              onCancelEdit={() => setEditingCell(null)}
-              onExport={handleExport}
-              onExportPdf={handleExportPdf}
-              onExportCsv={handleExportCsv}
-              onShare={handleShare}
-              shareCopied={shareCopied}
-            />
-          </>
-        )}
 
-        {groupedRows.length > 0 && (
-          <HistoryPanel
-            history={history}
-            selectedHistoryId={selectedHistoryId}
-            historyLabel={historyLabel}
-            groupedRowsCount={groupedRows.length}
-            onSelect={setSelectedHistoryId}
-            onDelete={handleDeleteHistory}
-            onSave={handleSaveHistory}
-            onLabelChange={setHistoryLabel}
-            onHistoryChange={() => setHistory(getHistory())}
-          />
-        )}
-      </main>
+            {processing && total === 0 && <SkeletonLoading />}
+            {(processing || total > 0) && <ProgressBar done={done} total={total} />}
+
+            {groupedRows.length > 0 && (
+              <>
+                <Dashboard rows={groupedRows} />
+                <ResultsTable
+                  groupedRows={groupedRows}
+                  tarifaConfig={tarifaConfig}
+                  photoPreviewMap={photoPreviewMap}
+                  editingCell={editingCell}
+                  editValue={editValue}
+                  columns={columns}
+                  onColumnsChange={setColumns}
+                  onEdit={handleEdit}
+                  onEditValueChange={setEditValue}
+                  onCommitEdit={commitEdit}
+                  onCancelEdit={() => setEditingCell(null)}
+                  onExport={handleExport}
+                  onExportPdf={handleExportPdf}
+                  onExportCsv={handleExportCsv}
+                  onShare={handleShare}
+                  shareCopied={shareCopied}
+                />
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        <main
+          className={'shell' + (dragOver ? ' drag-active' : '')}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {dragOver && (
+            <motion.div
+              className="drag-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              Solte os arquivos aqui
+            </motion.div>
+          )}
+
+          <FadeInSection>
+            <div className="hero">
+              <span className="hero-mark" />
+              <h1>Leitor de Hidrometros</h1>
+            </div>
+            <p className="subtitle">Fotos do WhatsApp - indice de cada apartamento - planilha, sem digitar nada na mao.</p>
+          </FadeInSection>
+
+          <SlideIn delay={0.1}>
+            <InputPanel
+              chatFile={chatFile}
+              photoFiles={photoFiles}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
+              processing={processing}
+              manualEntryEnabled={manualEntryEnabled}
+              offlineMode={offlineMode}
+              onChatFileChange={setChatFile}
+              onPhotoFilesChange={setPhotoFiles}
+              onDateStartChange={setDateStart}
+              onDateEndChange={setDateEnd}
+              onProcess={handleProcess}
+              onCancel={handleCancel}
+              onManualEntryToggle={setManualEntryEnabled}
+              onOfflineModeToggle={setOfflineMode}
+            />
+          </SlideIn>
+
+          <SlideIn delay={0.15}>
+            <ManualEntryPanel
+              enabled={manualEntryEnabled}
+              entries={manualEntries}
+              onAdd={handleAddManualEntry}
+              onRemove={handleRemoveManualEntry}
+            />
+          </SlideIn>
+
+          <SlideIn delay={0.2}>
+            <TarifaPanel onConfigChange={setTarifaConfig} />
+          </SlideIn>
+
+          {quotaExhausted && (
+            <div className="quota-warning visible" role="alert">
+              Cota do Gemini esgotada. As proximas imagens serao processadas por OCR local (Tesseract).
+              {quotaResetTime && ` Reset estimado: ${new Date(quotaResetTime).toLocaleTimeString('pt-BR')}.`}
+            </div>
+          )}
+
+          {processing && total === 0 && <SkeletonLoading />}
+
+          {(processing || total > 0) && <ProgressBar done={done} total={total} />}
+
+          <AnimatePresence>
+            {groupedRows.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                {sharedLabel && (
+                  <div className="shared-banner">
+                    Resultado compartilhado: <strong>{sharedLabel}</strong>
+                  </div>
+                )}
+                <Dashboard rows={groupedRows} />
+                <ResultsTable
+                  groupedRows={groupedRows}
+                  tarifaConfig={tarifaConfig}
+                  photoPreviewMap={photoPreviewMap}
+                  editingCell={editingCell}
+                  editValue={editValue}
+                  columns={columns}
+                  onColumnsChange={setColumns}
+                  onEdit={handleEdit}
+                  onEditValueChange={setEditValue}
+                  onCommitEdit={commitEdit}
+                  onCancelEdit={() => setEditingCell(null)}
+                  onExport={handleExport}
+                  onExportPdf={handleExportPdf}
+                  onExportCsv={handleExportCsv}
+                  onShare={handleShare}
+                  shareCopied={shareCopied}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {groupedRows.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <HistoryPanel
+                  history={history}
+                  selectedHistoryId={selectedHistoryId}
+                  historyLabel={historyLabel}
+                  groupedRowsCount={groupedRows.length}
+                  onSelect={setSelectedHistoryId}
+                  onDelete={handleDeleteHistory}
+                  onSave={handleSaveHistory}
+                  onLabelChange={setHistoryLabel}
+                  onHistoryChange={() => setHistory(getHistory())}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      )}
+
+      <nav className="one-hand-bar" role="navigation" aria-label="Navegação rápida">
+        <button className="one-hand-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <span className="icon">🏠</span>
+          Início
+        </button>
+        <button className="one-hand-btn" onClick={() => {
+          const el = document.querySelector('.table-wrap');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}>
+          <span className="icon">📊</span>
+          Tabela
+        </button>
+        <button className="one-hand-btn" onClick={() => {
+          const el = document.querySelector('.dashboard-container');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}>
+          <span className="icon">📈</span>
+          Gráficos
+        </button>
+        <button className="one-hand-btn" onClick={() => {
+          const el = document.querySelector('.history-list');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}>
+          <span className="icon">📁</span>
+          Histórico
+        </button>
+      </nav>
     </ErrorBoundary>
   );
 }
