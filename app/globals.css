@@ -871,3 +871,233 @@ td.editable:hover::after {
 .col-picker-item input[type="checkbox"] {
   accent-color: var(--accent);
 }
+
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.panel, .card, .history-item {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.theme-settings-wrapper {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+}
+
+.theme-settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+.theme-settings-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.theme-settings-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.theme-settings-caret {
+  font-size: 10px;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+
+.theme-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  min-width: 240px;
+  animation: dropdown-in 0.15s ease;
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.theme-dropdown-section {
+  padding: 8px 0;
+}
+.theme-dropdown-section + .theme-dropdown-section {
+  border-top: 1px solid var(--border);
+}
+
+.theme-dropdown-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.theme-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.theme-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.theme-pill:hover {
+  border-color: var(--accent);
+}
+.theme-pill.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.theme-schedule-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.theme-schedule-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s;
+}
+.theme-schedule-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.theme-schedule-option input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+.theme-schedule-times {
+  display: flex;
+  gap: 12px;
+}
+
+.theme-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.theme-time-field span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.theme-time-field input[type="time"] {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-mono), monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.theme-time-field input[type="time"]:focus {
+  border-color: var(--accent);
+}
+
+.accent-palette {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.accent-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.accent-dot:hover {
+  transform: scale(1.15);
+}
+.accent-dot.active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--text);
+}
+
+.accent-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.accent-hash {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: var(--font-mono), monospace;
+}
+
+.accent-hex-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-mono), monospace;
+  width: 100%;
+  text-transform: lowercase;
+}
+
+@media (max-width: 480px) {
+  .theme-settings-wrapper {
+    top: 12px;
+    right: 12px;
+  }
+  .theme-dropdown {
+    min-width: 220px;
+    right: -4px;
+  }
+  .theme-schedule-times {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

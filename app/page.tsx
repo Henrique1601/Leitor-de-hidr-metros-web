@@ -22,6 +22,7 @@ import SkeletonLoading from '@/components/SkeletonLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useTheme } from '@/components/ThemeProvider';
 import { Dashboard } from '@/components/Dashboard';
+import ThemeSettingsPanel from '@/components/ThemeSettingsPanel';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -145,7 +146,7 @@ export default function Home() {
   const [columns, setColumns] = useState<ColumnDef[]>(() => loadColumns());
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
-  const { theme, toggle } = useTheme();
+  const { theme, resolvedTheme, settings, updateSettings } = useTheme();
 
   useEffect(() => {
     setHistory(getHistory());
@@ -503,9 +504,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      <button className="theme-toggle" onClick={toggle} title="Alternar tema" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}>
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
+      <ThemeSettingsPanel />
       <main
         className={'shell' + (dragOver ? ' drag-active' : '')}
         onDragOver={handleDragOver}
