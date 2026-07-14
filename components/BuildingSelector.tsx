@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { Buildings, Check, CaretDown } from '@phosphor-icons/react'
 import { Building, BuildingState, getActiveBuilding, setActiveBuilding, saveBuildings } from '@/lib/building'
 
 interface Props {
@@ -37,9 +38,11 @@ export default function BuildingSelector({ state, onChange, onManage }: Props) {
         aria-label="Selecionar prédio"
         aria-expanded={open}
       >
-        <span className="building-icon">🏢</span>
+        <span className="building-icon">
+          <Buildings size={16} weight="light" />
+        </span>
         <span className="building-name">{active?.nome ?? 'Nenhum prédio'}</span>
-        <span className={`building-chevron ${open ? 'open' : ''}`}>▾</span>
+        <CaretDown size={14} weight="bold" className={`building-chevron ${open ? 'open' : ''}`} />
       </button>
 
       {open && (
@@ -59,9 +62,13 @@ export default function BuildingSelector({ state, onChange, onManage }: Props) {
                   className={`building-dropdown-item ${b.id === state.activeBuildingId ? 'active' : ''}`}
                   onClick={() => handleSelect(b.id)}
                 >
-                  <span className="building-item-icon">🏢</span>
+                  <span className="building-item-icon">
+                    <Buildings size={14} weight="light" />
+                  </span>
                   <span className="building-item-name">{b.nome}</span>
-                  {b.id === state.activeBuildingId && <span className="building-item-check">✓</span>}
+                  {b.id === state.activeBuildingId && (
+                    <Check size={14} weight="bold" className="building-item-check" />
+                  )}
                 </button>
               ))}
               <div className="building-dropdown-divider" />

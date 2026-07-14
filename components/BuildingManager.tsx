@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { X, Trash } from '@phosphor-icons/react'
 import { Building, Bloco, Andar, BuildingState, createBuilding, updateBuilding, deleteBuilding, saveBuildings, totalApts, generateApts } from '@/lib/building'
 
 interface Props {
@@ -112,7 +113,9 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
       <div className="building-manager" onClick={(e) => e.stopPropagation()}>
         <div className="building-manager-header">
           <h2>{view === 'list' ? 'Gerenciar Prédios' : (editing?.id && state.buildings.find((b) => b.id === editing.id) ? 'Editar Prédio' : 'Novo Prédio')}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Fechar">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="Fechar">
+            <X size={16} weight="bold" />
+          </button>
         </div>
 
         <div className="building-manager-body">
@@ -164,7 +167,9 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
                         className="building-bloco-name"
                         placeholder="Nome do bloco"
                       />
-                      <button className="icon-btn danger" onClick={() => removeBloco(bloco.id)} aria-label="Remover bloco">🗑️</button>
+                      <button className="icon-btn danger" onClick={() => removeBloco(bloco.id)} aria-label="Remover bloco">
+                        <Trash size={14} weight="bold" />
+                      </button>
                     </div>
 
                     <div className="building-andares">
@@ -184,7 +189,9 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
                           <span className="building-andar-preview">
                             {andar.apts.slice(0, 3).join(', ')}{andar.apts.length > 3 ? '...' : ''}
                           </span>
-                          <button className="icon-btn danger small" onClick={() => removeAndar(bloco.id, andar.numero)} aria-label={`Remover andar ${andar.numero}`}>✕</button>
+                          <button className="icon-btn danger small" onClick={() => removeAndar(bloco.id, andar.numero)} aria-label={`Remover andar ${andar.numero}`}>
+                            <X size={14} weight="bold" />
+                          </button>
                         </div>
                       ))}
                       <button className="secondary small" onClick={() => addAndar(bloco.id)}>+ Andar</button>

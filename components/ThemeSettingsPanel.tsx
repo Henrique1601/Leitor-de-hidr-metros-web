@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Sun, Moon, ArrowsClockwise, MapPin, Clock } from '@phosphor-icons/react'
 import { useTheme } from './ThemeProvider'
 import { ACCENT_PALETTE } from '../lib/themeSettings'
 
@@ -60,7 +61,9 @@ export default function ThemeSettingsPanel() {
     [updateAccent]
   )
 
-  const icon = settings.theme === 'dark' ? '🌙' : '☀️'
+  const icon = settings.theme === 'dark'
+    ? <Moon size={16} weight="fill" />
+    : <Sun size={16} weight="fill" />
 
   return (
     <div className="theme-settings-wrapper">
@@ -87,21 +90,21 @@ export default function ThemeSettingsPanel() {
                 onClick={() => handleThemeChange('light')}
                 aria-label="Tema claro"
               >
-                ☀️
+                <Sun size={18} weight="fill" />
               </button>
               <button
                 className={`theme-pill ${settings.theme === 'dark' && !settings.schedule.enabled ? 'active' : ''}`}
                 onClick={() => handleThemeChange('dark')}
                 aria-label="Tema escuro"
               >
-                🌙
+                <Moon size={18} weight="fill" />
               </button>
               <button
                 className={`theme-pill ${settings.schedule.enabled ? 'active' : ''}`}
                 onClick={handleAutoMode}
                 aria-label="Tema automático"
               >
-                🔄
+                <ArrowsClockwise size={18} weight="fill" />
               </button>
             </div>
           </div>
@@ -117,7 +120,7 @@ export default function ThemeSettingsPanel() {
                     checked={settings.schedule.mode === 'geolocation'}
                     onChange={() => updateSchedule({ mode: 'geolocation' })}
                   />
-                  <span>📍 Geolocalização</span>
+                  <span><MapPin size={14} weight="light" /> Geolocalização</span>
                 </label>
                 <label className="theme-schedule-option">
                   <input
@@ -126,7 +129,7 @@ export default function ThemeSettingsPanel() {
                     checked={settings.schedule.mode === 'fixed'}
                     onChange={() => updateSchedule({ mode: 'fixed' })}
                   />
-                  <span>⏰ Fixo</span>
+                  <span><Clock size={14} weight="light" /> Fixo</span>
                 </label>
               </div>
               {settings.schedule.mode === 'fixed' && (

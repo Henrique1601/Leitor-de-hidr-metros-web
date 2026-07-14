@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { Check, ArrowsLeftRight } from '@phosphor-icons/react';
 import type { HistoryEntry } from '@/lib/history';
 import { saveToHistory } from '@/lib/history';
 import { exportBackup, importBackup } from '@/lib/backup';
@@ -163,7 +164,7 @@ export default function HistoryPanel({
                   onClick={(e) => handleCompareToggle(e, entry.id)}
                   title="Selecionar para comparar"
                 >
-                  {isCompare ? '✓' : '⇔'}
+                  {isCompare ? <Check size={14} weight="bold" /> : <ArrowsLeftRight size={14} weight="light" />}
                 </button>
               </div>
             );

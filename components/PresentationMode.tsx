@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { X, Monitor } from '@phosphor-icons/react'
 
 interface Props {
   enabled: boolean
@@ -42,7 +43,7 @@ export default function PresentationMode({ enabled, onToggle, children }: Props)
       <div className="presentation-topbar">
         <span className="presentation-badge">MODO APRESENTAÇÃO</span>
         <button className="presentation-exit" onClick={onToggle}>
-          ✕ Sair (Esc)
+          <X size={16} weight="bold" /> Sair (Esc)
         </button>
       </div>
       <div className="presentation-content">
@@ -60,7 +61,7 @@ export function PresentationToggle({ enabled, onToggle }: { enabled: boolean; on
       title={enabled ? 'Sair do modo apresentação' : 'Modo apresentação (projetor)'}
       aria-label={enabled ? 'Sair do modo apresentação' : 'Entrar no modo apresentação'}
     >
-      {enabled ? '✕' : '🖥️'}
+      {enabled ? <X size={18} weight="bold" /> : <Monitor size={18} weight="light" />}
     </button>
   )
 }

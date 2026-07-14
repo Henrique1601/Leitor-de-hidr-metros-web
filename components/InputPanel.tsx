@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { Buildings } from '@phosphor-icons/react';
 import { BuildingState, getActiveBuilding, totalApts } from '@/lib/building';
 
 interface InputPanelProps {
@@ -48,7 +49,9 @@ function InputPanelInner({
       <div className="panel-title">Entrada</div>
       {activeBuilding && (
         <div className="building-context-bar">
-          <span className="building-context-icon">🏢</span>
+          <span className="building-context-icon">
+            <Buildings size={18} weight="light" />
+          </span>
           <span className="building-context-text">
             {activeBuilding.nome}{' '}
             <span className="building-context-detail">

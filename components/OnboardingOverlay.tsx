@@ -1,34 +1,35 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ChatsCircle, Camera, FolderOpen, Robot } from '@phosphor-icons/react'
 
 const ONBOARDING_KEY = 'hidrometro-onboarding-seen'
 
 interface Step {
   title: string
   body: string
-  icon: string
+  icon: ReactNode
 }
 
 const STEPS: Step[] = [
   {
-    icon: '💬',
+    icon: <ChatsCircle size={32} weight="light" />,
     title: '1. Exporte o chat',
     body: 'No WhatsApp, vá no grupo do prédio, toque nos 3 pontinhos → "Mais" → "Exportar conversa" → "Sem mídia". Você vai receber um arquivo .txt.',
   },
   {
-    icon: '📸',
+    icon: <Camera size={32} weight="light" />,
     title: '2. Tire fotos dos hidrômetros',
     body: 'Abra a câmera do celular e fotografe o índice de cada apartamento. As fotos precisam estar no mesmo computador/celular do arquivo .txt.',
   },
   {
-    icon: '📁',
+    icon: <FolderOpen size={32} weight="light" />,
     title: '3. Envie tudo junto',
     body: 'Arraste o arquivo .txt E a pasta com as fotos para esta página. O app vai combinar automaticamente cada foto com o apartamento do chat.',
   },
   {
-    icon: '🤖',
+    icon: <Robot size={32} weight="light" />,
     title: '4. OCR automático',
     body: 'O app envia cada foto para leitura automática. Você pode corrigir qualquer índice clicando duas vezes na tabela. Resultados são salvos no histórico.',
   },

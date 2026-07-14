@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  House, ChartLineUp, ArrowUp, X,
+  ListNumbers, ClockCounterClockwise,
+} from '@phosphor-icons/react';
 import * as XLSX from 'xlsx';
 import { parseChat, PhotoIndexRow } from '@/lib/parseChat';
 import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
@@ -594,7 +598,7 @@ export default function Home() {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             aria-label="Voltar ao topo"
           >
-            ↑
+            <ArrowUp weight="bold" size={20} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -603,8 +607,8 @@ export default function Home() {
         <div className="presentation-mode">
           <div className="presentation-topbar">
             <span className="presentation-badge">MODO APRESENTAÇÃO</span>
-            <button className="presentation-exit" onClick={() => setPresentationMode(false)}>
-              ✕ Sair (Esc)
+              <button className="presentation-exit" onClick={() => setPresentationMode(false)}>
+              <X weight="bold" size={16} /> Sair (Esc)
             </button>
           </div>
           <div className="presentation-content">
@@ -802,28 +806,28 @@ export default function Home() {
 
       <nav className="one-hand-bar" role="navigation" aria-label="Navegação rápida">
         <button className="one-hand-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <span className="icon">🏠</span>
+          <House size={20} weight="light" />
           Início
         </button>
         <button className="one-hand-btn" onClick={() => {
           const el = document.querySelector('.table-wrap');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
         }}>
-          <span className="icon">📊</span>
+          <ListNumbers size={20} weight="light" />
           Tabela
         </button>
         <button className="one-hand-btn" onClick={() => {
           const el = document.querySelector('.dashboard-container');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
         }}>
-          <span className="icon">📈</span>
+          <ChartLineUp size={20} weight="light" />
           Gráficos
         </button>
         <button className="one-hand-btn" onClick={() => {
           const el = document.querySelector('.history-list');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
         }}>
-          <span className="icon">📁</span>
+          <ClockCounterClockwise size={20} weight="light" />
           Histórico
         </button>
       </nav>

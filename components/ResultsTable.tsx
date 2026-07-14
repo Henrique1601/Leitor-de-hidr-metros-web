@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Warning, X, Drop } from '@phosphor-icons/react';
 import type { GroupedRow } from '@/lib/results';
 import type { ColumnDef } from '@/lib/columns';
 import { TarifaConfig, calcularTarifa, formatarMoeda } from '@/lib/tarifa';
@@ -178,7 +179,7 @@ export default function ResultsTable({
                     <td className="td-validacao">
                       {abnormalSet.has(r.apartamento) && (
                         <span className="badge-alerta" title="Consumo anormal — 2x acima da media (possivel vazamento)">
-                          🚰
+                          <Drop size={14} weight="fill" className="icon-warn" />
                         </span>
                       )}
                     </td>
@@ -203,7 +204,11 @@ export default function ResultsTable({
                     <td className="td-validacao">
                       {r.validacao && (
                         <span className="badge-validacao" title={r.validacao}>
-                          {r.validacao.includes('critico') || r.validacao.includes('🔴') ? '🔴' : '⚠️'}
+                          <Warning
+                            size={16}
+                            weight="fill"
+                            className={r.validacao.includes('critico') ? 'icon-danger' : 'icon-warn'}
+                          />
                         </span>
                       )}
                     </td>
