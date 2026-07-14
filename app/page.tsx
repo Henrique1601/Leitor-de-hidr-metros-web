@@ -186,6 +186,17 @@ export default function Home() {
     setTarifaConfig(getTarifaConfig());
     if (!hasSeenOnboarding()) setShowOnboarding(true);
     setBuildingState(migrateToBuildings());
+
+    // Expose seed function for browser console
+    if (typeof window !== 'undefined') {
+      (window as any).seedAcquaplay = async () => {
+        const { seedAcquaplay } = await import('@/lib/seedAcquaplay');
+        const state = seedAcquaplay();
+        setBuildingState(state);
+        console.log('Acquaplay seedado com sucesso!', state);
+        return state;
+      };
+    }
   }, []);
 
   useEffect(() => {
