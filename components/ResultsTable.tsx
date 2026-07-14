@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Warning, X, Drop } from '@phosphor-icons/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Warning, X, Drop, List } from '@phosphor-icons/react';
 import type { GroupedRow } from '@/lib/results';
 import type { ColumnDef } from '@/lib/columns';
 import { TarifaConfig, calcularTarifa, formatarMoeda } from '@/lib/tarifa';
@@ -96,23 +97,33 @@ export default function ResultsTable({
           onClick={() => setShowColPicker(!showColPicker)}
           aria-label="Mostrar ou esconder colunas"
         >
+          <List size={14} weight="light" />
           Colunas
         </button>
-        {showColPicker && (
-          <div className="col-picker-dropdown" role="menu">
-            {columns.map((c) => (
-              <label key={c.id} className="col-picker-item">
-                <input
-                  type="checkbox"
-                  checked={c.visible}
-                  onChange={() => toggleCol(c.id)}
-                  disabled={c.id === 'ape'}
-                />
-                <span>{c.header}</span>
-              </label>
-            ))}
-          </div>
-        )}
+        <AnimatePresence>
+          {showColPicker && (
+            <motion.div
+              className="col-picker-dropdown"
+              role="menu"
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {columns.map((c) => (
+                <label key={c.id} className="col-picker-item">
+                  <input
+                    type="checkbox"
+                    checked={c.visible}
+                    onChange={() => toggleCol(c.id)}
+                    disabled={c.id === 'ape'}
+                  />
+                  <span>{c.header}</span>
+                </label>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <div className="table-wrap" role="region" aria-label="Tabela de leituras" tabIndex={0}>
         <table aria-label="Leituras de hidrometros por apartamento">

@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChartBar, Eye, EyeSlash } from '@phosphor-icons/react';
 import { GroupedRow } from '@/lib/results';
 import { getMultiPeriodData, getEvolutionData } from '@/lib/history';
 import {
@@ -76,102 +78,127 @@ export function Dashboard({ rows }: DashboardProps) {
         aria-expanded={showDashboard}
         aria-controls="dashboard-panel"
       >
+        <ChartBar size={16} weight="light" />
         {showDashboard ? 'Ocultar Graficos' : 'Mostrar Graficos'}
       </button>
 
-      {showDashboard && (
-        <div id="dashboard-panel" className="dashboard-panel">
-          {consumoData.length > 0 && (
-            <div className="dashboard-card">
-              <h3>Consumo por Apartamento</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={consumoData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--text)', fontSize: 12 }} />
-                  <YAxis tick={{ fill: 'var(--text)', fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8 }}
-                    labelStyle={{ color: 'var(--text)' }}
-                  />
-                  <Bar dataKey="consumo" fill="#3ecfc0" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {confiancaData.length > 0 && (
-            <div className="dashboard-card">
-              <h3>Distribuicao de Confianca</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={confiancaData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {confiancaData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {evolutionData && evolutionData.length >= 2 && (
-            <div className="dashboard-card dashboard-card--full">
-              <h3>Evolucao do Consumo ({periods.length} periodos)</h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={evolutionData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="period" tick={{ fill: 'var(--text)', fontSize: 11 }} />
-                  <YAxis tick={{ fill: 'var(--text)', fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8 }}
-                    labelStyle={{ color: 'var(--text)' }}
-                  />
-                  <Legend />
-                  {effectiveSelectedApts.map((apt, i) => (
-                    <Line
-                      key={apt}
-                      type="monotone"
-                      dataKey={apt}
-                      stroke={COLORS[i % COLORS.length]}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      connectNulls
+      <AnimatePresence>
+        {showDashboard && (
+          <motion.div
+            id="dashboard-panel"
+            className="dashboard-panel"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {consumoData.length > 0 && (
+              <motion.div
+                className="dashboard-card"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05, duration: 0.3 }}
+              >
+                <h3>Consumo por Apartamento</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={consumoData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="name" tick={{ fill: 'var(--text)', fontSize: 12 }} />
+                    <YAxis tick={{ fill: 'var(--text)', fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8 }}
+                      labelStyle={{ color: 'var(--text)' }}
                     />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-              <div className="evolution-apt-selector">
-                <span>Apartamentos:</span>
-                {(() => {
-                  const allApts = [...new Set(periods.flatMap((p) => p.rows.map((r) => r.apartamento)))];
-                  return allApts.map((apt) => (
-                    <label key={apt} className="apt-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedApts.includes(apt)}
-                        onChange={(e) => {
-                          if (e.target.checked) setSelectedApts((prev) => [...prev, apt]);
-                          else setSelectedApts((prev) => prev.filter((a) => a !== apt));
-                        }}
+                    <Bar dataKey="consumo" fill="#3ecfc0" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
+
+            {confiancaData.length > 0 && (
+              <motion.div
+                className="dashboard-card"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+              >
+                <h3>Distribuicao de Confianca</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={confiancaData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {confiancaData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
+
+            {evolutionData && evolutionData.length >= 2 && (
+              <motion.div
+                className="dashboard-card dashboard-card--full"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+              >
+                <h3>Evolucao do Consumo ({periods.length} periodos)</h3>
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart data={evolutionData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="period" tick={{ fill: 'var(--text)', fontSize: 11 }} />
+                    <YAxis tick={{ fill: 'var(--text)', fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8 }}
+                      labelStyle={{ color: 'var(--text)' }}
+                    />
+                    <Legend />
+                    {effectiveSelectedApts.map((apt, i) => (
+                      <Line
+                        key={apt}
+                        type="monotone"
+                        dataKey={apt}
+                        stroke={COLORS[i % COLORS.length]}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                        connectNulls
                       />
-                      {apt}
-                    </label>
-                  ));
-                })()}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="evolution-apt-selector">
+                  <span>Apartamentos:</span>
+                  {(() => {
+                    const allApts = [...new Set(periods.flatMap((p) => p.rows.map((r) => r.apartamento)))];
+                    return allApts.map((apt) => (
+                      <label key={apt} className="apt-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedApts.includes(apt)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedApts((prev) => [...prev, apt]);
+                            else setSelectedApts((prev) => prev.filter((a) => a !== apt));
+                          }}
+                        />
+                        {apt}
+                      </label>
+                    ));
+                  })()}
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

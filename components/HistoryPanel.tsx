@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Check, ArrowsLeftRight } from '@phosphor-icons/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, ArrowsLeftRight, Trash, Download, Upload, FileXls, FilePdf } from '@phosphor-icons/react';
 import type { HistoryEntry } from '@/lib/history';
 import { saveToHistory } from '@/lib/history';
 import { exportBackup, importBackup } from '@/lib/backup';
@@ -106,10 +107,10 @@ export default function HistoryPanel({
       )}
       <div className="history-actions">
         <button className="secondary" onClick={exportBackup} aria-label="Exportar historico como backup">
-          Exportar backup
+          <Download size={14} weight="light" /> Exportar backup
         </button>
         <button className="secondary" onClick={() => importRef.current?.click()} aria-label="Importar backup de historico">
-          Importar backup
+          <Upload size={14} weight="light" /> Importar backup
         </button>
         <input
           ref={importRef}
@@ -120,7 +121,7 @@ export default function HistoryPanel({
           aria-label="Selecionar arquivo de backup"
         />
         <button className="secondary" onClick={() => xlsxRef.current?.click()} aria-label="Importar leituras de planilha">
-          Importar XLSX
+          <FileXls size={14} weight="light" /> Importar XLSX
         </button>
         <input
           ref={xlsxRef}
@@ -146,29 +147,36 @@ export default function HistoryPanel({
             <span>Apts</span>
             <span title="Selecionar para comparar">Cmp</span>
           </div>
-          {history.map((entry) => {
-            const date = new Date(entry.date).toLocaleDateString('pt-BR');
-            const isSelected = selectedHistoryId === entry.id;
-            const isCompare = compareId === entry.id;
-            return (
-              <div
-                key={entry.id}
-                className={'history-item' + (isSelected ? ' selected' : '') + (isCompare ? ' compare' : '')}
-                onClick={() => onSelect(isSelected ? null : entry.id)}
-              >
-                <span className="mono">{entry.label}</span>
-                <span className="history-date">{date}</span>
-                <span>{entry.rows.length}</span>
-                <button
-                  className={'history-compare' + (isCompare ? ' active' : '')}
-                  onClick={(e) => handleCompareToggle(e, entry.id)}
-                  title="Selecionar para comparar"
+          <AnimatePresence mode="popLayout">
+            {history.map((entry) => {
+              const date = new Date(entry.date).toLocaleDateString('pt-BR');
+              const isSelected = selectedHistoryId === entry.id;
+              const isCompare = compareId === entry.id;
+              return (
+                <motion.div
+                  key={entry.id}
+                  layout
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={'history-item' + (isSelected ? ' selected' : '') + (isCompare ? ' compare' : '')}
+                  onClick={() => onSelect(isSelected ? null : entry.id)}
                 >
-                  {isCompare ? <Check size={14} weight="bold" /> : <ArrowsLeftRight size={14} weight="light" />}
-                </button>
-              </div>
-            );
-          })}
+                  <span className="mono">{entry.label}</span>
+                  <span className="history-date">{date}</span>
+                  <span>{entry.rows.length}</span>
+                  <button
+                    className={'history-compare' + (isCompare ? ' active' : '')}
+                    onClick={(e) => handleCompareToggle(e, entry.id)}
+                    title="Selecionar para comparar"
+                  >
+                    {isCompare ? <Check size={14} weight="bold" /> : <ArrowsLeftRight size={14} weight="light" />}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
       {selectedHistoryId && (

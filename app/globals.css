@@ -753,13 +753,20 @@ td.editable:hover::after {
 
 /* Dashboard */
 .dashboard-container { margin-bottom: 16px; }
-.dashboard-toggle { width: 100%; }
+.dashboard-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 
 .dashboard-panel {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: 16px;
   margin-top: 16px;
+  overflow: hidden;
 }
 
 .dashboard-card {
@@ -768,17 +775,20 @@ td.editable:hover::after {
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.25s var(--ease-out);
+  transition: box-shadow 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
 }
 
 .dashboard-card:hover {
   box-shadow: var(--shadow-md);
+  border-color: var(--border-subtle);
 }
 
 .dashboard-card h3 {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   margin: 0 0 16px;
 }
 
