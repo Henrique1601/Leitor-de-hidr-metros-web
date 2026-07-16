@@ -3,6 +3,7 @@
 import { memo, useMemo, useRef } from 'react';
 import { Buildings, Files, FolderOpen } from '@phosphor-icons/react';
 import { BuildingState, getActiveBuilding, totalApts } from '@/lib/building';
+import { clearCache } from '@/lib/cache';
 
 interface InputPanelProps {
   chatFile: File | null;
@@ -198,6 +199,18 @@ function InputPanelInner({
           </span>
           <span className="toggle-text">Offline</span>
         </label>
+        <button
+          className="secondary"
+          title="Limpar cache de OCR — força reprocessamento das fotos"
+          onClick={async () => {
+            await clearCache();
+            alert('Cache de OCR limpo. As fotos serao reprocessadas na proxima leitura.');
+          }}
+          disabled={processing}
+          aria-label="Limpar cache de OCR"
+        >
+          Limpar cache
+        </button>
       </div>
     </section>
   );

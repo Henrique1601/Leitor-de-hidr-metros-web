@@ -72,3 +72,17 @@ export async function setCachedResult(file: File, result: CachedResult): Promise
     // silently ignore cache errors
   }
 }
+
+export async function clearCache(): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {
+    // silently ignore
+  }
+}
