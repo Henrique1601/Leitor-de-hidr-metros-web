@@ -10,9 +10,9 @@ import {
 import * as XLSX from 'xlsx';
 import { parseChat, parsePhotoFiles, PhotoIndexRow } from '@/lib/parseChat';
 import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
-import { getCachedResult, setCachedResult } from '@/lib/cache';
+import { getCachedResult, setCachedResult, clearCache } from '@/lib/cache';
 import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
-import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, HistoryEntry } from '@/lib/history';
+import { getHistory, saveToHistory, deleteFromHistory, getPreviousIndices, getLatestPreviousIndices, HistoryEntry } from '@/lib/history';
 import { getTarifaConfig, TarifaConfig, calcularTarifa } from '@/lib/tarifa';
 import { loadColumns, saveColumns, ColumnDef } from '@/lib/columns';
 import { extractLocalWorker } from '@/lib/tesseractClient';
@@ -27,6 +27,7 @@ import SkeletonLoading from '@/components/SkeletonLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useTheme } from '@/components/ThemeProvider';
 import { Dashboard } from '@/components/Dashboard';
+import { GeneralDashboard } from '@/components/GeneralDashboard';
 import ThemeSettingsPanel from '@/components/ThemeSettingsPanel';
 import OnboardingOverlay, { hasSeenOnboarding, markOnboardingSeen } from '@/components/OnboardingOverlay';
 import PresentationMode, { PresentationToggle } from '@/components/PresentationMode';
@@ -182,6 +183,8 @@ export default function Home() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [buildingState, setBuildingState] = useState<BuildingState>({ buildings: [], activeBuildingId: null });
   const [showBuildingManager, setShowBuildingManager] = useState(false);
+  const [pendingApts, setPendingApts] = useState<Set<string>>(new Set());
+  const [reprocessing, setReprocessing] = useState<Set<string>>(new Set());
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
   const { theme, resolvedTheme, settings, updateSettings } = useTheme();
@@ -281,7 +284,11 @@ export default function Home() {
 
   const groupedRows = useMemo(() => {
     const ocrRows = sharedResults ? sharedResults : groupByApartment(results, previousIndices);
-    if (manualEntries.length === 0) return ocrRows;
+    const withPending = ocrRows.map((r) => ({
+      ...r,
+      pendente: pendingApts.has(r.apartamento),
+    }));
+    if (manualEntries.length === 0) return withPending;
 
     const manualResults: ExtractResult[] = manualEntries.map((e) => ({
       arquivo: `manual_${e.id}`,
@@ -289,8 +296,12 @@ export default function Home() {
       medidores: [{ posicao: 1, indiceInteiro: e.indice, indiceDecimal: '', confianca: 'alta' as const, observacao: 'Digitado manualmente' }],
     }));
     const allResults = [...results, ...manualResults];
-    return groupByApartment(allResults, previousIndices);
-  }, [results, previousIndices, sharedResults, manualEntries]);
+    const allGrouped = groupByApartment(allResults, previousIndices);
+    return allGrouped.map((r) => ({
+      ...r,
+      pendente: pendingApts.has(r.apartamento),
+    }));
+  }, [results, previousIndices, sharedResults, manualEntries, pendingApts]);
 
   const photoPreviewMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -535,6 +546,134 @@ export default function Home() {
     setEditingCell(null);
   }
 
+  function handleTogglePending(apt: string) {
+    setPendingApts((prev) => {
+      const next = new Set(prev);
+      if (next.has(apt)) next.delete(apt);
+      else next.add(apt);
+      return next;
+    });
+  }
+
+  async function handleReprocess(apt: string) {
+    const row = groupedRows.find((r) => r.apartamento === apt);
+    if (!row || !row.arquivos) return;
+    const firstFile = row.arquivos.split(', ')[0];
+    const file = photoMapRef.current.get(firstFile);
+    if (!file) return;
+
+    setReprocessing((prev) => new Set(prev).add(apt));
+    try {
+      await clearCache();
+      const { base64, mediaType } = await compressImageServerSide(file);
+      const resp = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          arquivo: firstFile,
+          apartamentos: [apt],
+          imageBase64: base64,
+          mediaType,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        await setCachedResult(file, {
+          arquivo: data.arquivo,
+          apartamentosEsperados: [apt],
+          medidores: data.medidores,
+        });
+        setResults((prev) => {
+          const filtered = prev.filter((r) => !r.apartamentosEsperados.includes(apt));
+          return [...filtered, { arquivo: data.arquivo, apartamentosEsperados: [apt], medidores: data.medidores }];
+        });
+      }
+    } catch (e) {
+      console.error(`[reprocess] Erro ao reprocessar ${apt}:`, e);
+    } finally {
+      setReprocessing((prev) => {
+        const next = new Set(prev);
+        next.delete(apt);
+        return next;
+      });
+    }
+  }
+
+  async function handleReprocessLowConfidence() {
+    const lowApts = groupedRows
+      .filter((r) => r.confianca === 'baixa' && r.arquivos)
+      .map((r) => ({ apt: r.apartamento, file: r.arquivos.split(', ')[0] }));
+    if (lowApts.length === 0) return;
+
+    await clearCache();
+    for (const { apt, file: fileName } of lowApts) {
+      const file = photoMapRef.current.get(fileName);
+      if (!file) continue;
+      setReprocessing((prev) => new Set(prev).add(apt));
+      try {
+        const { base64, mediaType } = await compressImageServerSide(file);
+        const resp = await fetch('/api/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ arquivo: fileName, apartamentos: [apt], imageBase64: base64, mediaType }),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          await setCachedResult(file, { arquivo: data.arquivo, apartamentosEsperados: [apt], medidores: data.medidores });
+          setResults((prev) => {
+            const filtered = prev.filter((r) => !r.apartamentosEsperados.includes(apt));
+            return [...filtered, { arquivo: data.arquivo, apartamentosEsperados: [apt], medidores: data.medidores }];
+          });
+        }
+      } catch (e) {
+        console.error(`[reprocess] Erro ao reprocessar ${apt}:`, e);
+      } finally {
+        setReprocessing((prev) => {
+          const next = new Set(prev);
+          next.delete(apt);
+          return next;
+        });
+      }
+    }
+  }
+
+  const handleExportChanged = useCallback(() => {
+    const prevIdx = getLatestPreviousIndices(historyLabel);
+    if (!prevIdx || prevIdx.size === 0) {
+      alert('Nenhuma leitura anterior encontrada no historico para comparar.');
+      return;
+    }
+    const activeBuilding = getActiveBuilding(buildingState);
+    const buildingPrefix = activeBuilding ? activeBuilding.nome.replace(/\s+/g, '_') + '_' : '';
+    const changed = groupedRows.filter((r) => {
+      const ant = prevIdx.get(r.apartamento);
+      return ant && r.indice && r.indice !== ant;
+    });
+    if (changed.length === 0) {
+      alert('Nenhuma alteracao detectada em relacao a leitura anterior.');
+      return;
+    }
+    const rows = changed.map((r) => {
+      const cleaned = r.consumo.replace(/[^\d\-\.]/g, '');
+      const consumo = parseFloat(cleaned);
+      const valor = !isNaN(consumo) && consumo > 0 && tarifaConfig.faixas.length > 0 ? calcularTarifa(consumo, tarifaConfig) : 0;
+      return {
+        Apartamento: r.apartamento,
+        Bloco: r.bloco,
+        Indice: r.indice,
+        Consumo: r.consumo,
+        Valor: valor > 0 ? `R$ ${valor.toFixed(2).replace('.', ',')}` : '',
+        Confianca: r.confianca,
+        Observacao: r.observacao,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Alterados');
+    XLSX.writeFile(wb, 'alterados_' + buildingPrefix + new Date().toISOString().slice(0, 10) + '.xlsx');
+  }, [groupedRows, tarifaConfig, buildingState, historyLabel]);
+
   const handleExport = useCallback(() => {
     const activeBuilding = getActiveBuilding(buildingState);
     const buildingPrefix = activeBuilding ? activeBuilding.nome.replace(/\s+/g, '_') + '_' : '';
@@ -682,6 +821,7 @@ export default function Home() {
             {groupedRows.length > 0 && (
               <>
                 <Dashboard rows={groupedRows} />
+                <GeneralDashboard />
                 <ResultsTable
                   groupedRows={groupedRows}
                   tarifaConfig={tarifaConfig}
@@ -700,6 +840,11 @@ export default function Home() {
                   onExportCsv={handleExportCsv}
                   onShare={handleShare}
                   shareCopied={shareCopied}
+                  onExportChanged={handleExportChanged}
+                  onReprocess={handleReprocess}
+                  onReprocessLowConfidence={handleReprocessLowConfidence}
+                  onTogglePending={handleTogglePending}
+                  reprocessing={reprocessing}
                 />
               </>
             )}
@@ -789,6 +934,7 @@ export default function Home() {
                   </div>
                 )}
                 <Dashboard rows={groupedRows} />
+                <GeneralDashboard />
                 <ResultsTable
                   groupedRows={groupedRows}
                   tarifaConfig={tarifaConfig}
@@ -807,6 +953,11 @@ export default function Home() {
                   onExportCsv={handleExportCsv}
                   onShare={handleShare}
                   shareCopied={shareCopied}
+                  onExportChanged={handleExportChanged}
+                  onReprocess={handleReprocess}
+                  onReprocessLowConfidence={handleReprocessLowConfidence}
+                  onTogglePending={handleTogglePending}
+                  reprocessing={reprocessing}
                 />
               </motion.div>
             )}

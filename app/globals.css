@@ -657,6 +657,117 @@ tbody tr.danger { background: var(--danger-dim); }
   font-weight: 600;
 }
 
+/* Confidence Filter */
+.conf-filter-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.conf-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.conf-filter-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.conf-filter-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.conf-filter-count {
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+
+.conf-filter-btn.active .conf-filter-count {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.reprocess-all-btn {
+  margin-left: auto;
+}
+
+/* Action buttons in table */
+.th-actions { width: 72px; text-align: center; }
+.td-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+}
+
+.action-btn:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.action-btn.pending-active {
+  background: var(--warn-dim);
+  color: var(--warn);
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Pending row */
+tr.pendente td {
+  opacity: 0.5;
+  border-left: 3px solid var(--warn);
+}
+
+tr.pendente td:first-child {
+  border-left: 3px solid var(--warn);
+}
+
+/* Spin animation for reprocessing */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 /* Shared Banner */
 .shared-banner {
   background: var(--accent-dim);
@@ -886,6 +997,41 @@ td.editable:hover::after {
 
 .apt-checkbox input {
   accent-color: var(--accent);
+}
+
+/* General Dashboard */
+.general-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.general-summary-item {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.general-summary-item strong {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.general-stat {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.general-stat.dim {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 /* PWA Install Prompt */

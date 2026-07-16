@@ -26,6 +26,7 @@ export interface GroupedRow {
   observacao: string;
   arquivos: string;
   validacao?: string;
+  pendente?: boolean;
 }
 
 export function groupByApartment(results: ExtractResult[], previousIndices?: Map<string, string>): GroupedRow[] {
