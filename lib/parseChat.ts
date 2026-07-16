@@ -241,13 +241,16 @@ export function parsePhotoFiles(files: File[], knownApts?: string[]): PhotoIndex
   for (const file of files) {
     if (!file.type.startsWith('image/')) continue;
     const name = file.name.replace(/\.[^.]+$/, '');
-    const digits = name.replace(/[^0-9]/g, '');
     let apts: string[] = [];
 
-    if (digits.length >= 3 && digits.length <= 4) {
-      const candidate = digits.toUpperCase();
-      if (!aptSet || aptSet.has(candidate)) {
-        apts = [candidate];
+    const segments = name.split(/[^0-9]+/).filter(Boolean);
+
+    if (aptSet) {
+      for (const seg of segments) {
+        if (aptSet.has(seg)) {
+          apts = [seg];
+          break;
+        }
       }
     }
 
@@ -257,6 +260,13 @@ export function parsePhotoFiles(files: File[], knownApts?: string[]): PhotoIndex
           apts = [apt];
           break;
         }
+      }
+    }
+
+    if (apts.length === 0 && !aptSet) {
+      const digits = name.replace(/[^0-9]/g, '');
+      if (digits.length >= 3 && digits.length <= 4) {
+        apts = [digits.toUpperCase()];
       }
     }
 

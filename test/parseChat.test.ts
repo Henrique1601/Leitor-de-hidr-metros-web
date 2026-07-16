@@ -80,7 +80,7 @@ describe('parsePhotoFiles', () => {
     expect(rows[1].flags).toContain('sem_legenda');
   });
 
-  it('matches by apt substring in filename', () => {
+  it('matches by segment splitting for underscore filenames', () => {
     const knownApts = ['501', '502'];
     const rows = parsePhotoFiles([makeFile('foto_501_cor.jpg')], knownApts);
     expect(rows[0].apartamentos).toEqual(['501']);
@@ -100,5 +100,31 @@ describe('parsePhotoFiles', () => {
     ]);
     expect(rows.length).toBe(3);
     expect(rows.map((r) => r.apartamentos[0])).toEqual(['501', '502', '503']);
+  });
+
+  it('matches apartment from hyphenated filename like 1-510.jpg', () => {
+    const knownApts = ['501', '502', '503', '504', '505', '506', '507', '508', '509', '510', '511', '512', '513', '514', '515', '516', '517', '518', '519', '520', '521'];
+    const rows = parsePhotoFiles([makeFile('1-510.jpg'), makeFile('2-510.jpg')], knownApts);
+    expect(rows[0].apartamentos).toEqual(['510']);
+    expect(rows[1].apartamentos).toEqual(['510']);
+    expect(rows[0].flags).toEqual([]);
+    expect(rows[1].flags).toEqual([]);
+  });
+
+  it('matches apartment from multi-digit prefix like 1-1005.jpg', () => {
+    const knownApts = ['1001', '1002', '1003', '1004', '1005', '1006', '1007', '1008', '1009', '1010'];
+    const rows = parsePhotoFiles([makeFile('1-1005.jpg')], knownApts);
+    expect(rows[0].apartamentos).toEqual(['1005']);
+  });
+
+  it('matches by segment splitting for underscore filenames', () => {
+    const knownApts = ['501', '502', '503'];
+    const rows = parsePhotoFiles([makeFile('foto_501_cor.jpg')], knownApts);
+    expect(rows[0].apartamentos).toEqual(['501']);
+  });
+
+  it('falls back to all-digits when no known apts provided', () => {
+    const rows = parsePhotoFiles([makeFile('1-510.jpg')]);
+    expect(rows[0].apartamentos).toEqual(['1510']);
   });
 });
