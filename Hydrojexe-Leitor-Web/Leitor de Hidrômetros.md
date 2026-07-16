@@ -64,6 +64,7 @@ graph LR
 - [x] **Compressão inteligente** — 1600px, JPEG 85% antes de enviar
 - [x] **Concorrência controlada** — 3 fotos simultâneas, 600ms delay
 - [x] **Cache IndexedDB** — Fotos já processadas não reenviadas
+- [x] **Limpar cache** — Botão no InputPanel para limpar cache OCR e reprocessar
 - [x] **Cancelamento** — Interrompa a qualquer momento
 - [x] **Retry automático** — Backoff em caso de quota/rate limit
 - [x] **Notificação de quota** — Alerta quando API atinge limite
@@ -75,6 +76,11 @@ graph LR
 - [x] **Cores de confiança** — Verde/alta, Amarelo/média, Vermelho/baixa
 - [x] **Skeleton loading** — Animação enquanto processa
 - [x] **Filtro por prédio** — Filtrar histórico e exports por prédio ativo
+- [x] **Filtro de confiança** — Botões Todos/Alta/Média/Baixa/Pendente na tabela
+- [x] **Marcar como pendente** — Flag visual + filtro dedicado na tabela
+- [x] **Reprocessar individual** — Botão por linha para re-OCR de uma foto
+- [x] **Reprocessar baixas** — Re-OCR em lote só confiança < 50%
+- [x] **Exportar alterados** — Exporta só apartamentos que mudaram vs leitura anterior
 
 ### Exportação
 - [x] **XLSX** — Planilha Excel formatada
@@ -89,6 +95,7 @@ graph LR
 - [x] **Gráfico de pizza** — Distribuição de confiança
 - [x] **Evolução multi-período** — Comparar consumo entre meses
 - [x] **Toggle por apartamento** — Selecionar quais mostrar
+- [x] **Dashboard geral** — Resumo cross-building (leituras, consumo médio, cards)
 
 ### UX/UI
 - [x] **Tema dark/light** — Detecção automática do sistema
@@ -100,7 +107,7 @@ graph LR
 
 ### Infraestrutura
 - [x] **CI/CD** — GitHub Actions (lint, test, build)
-- [x] **Testes unitários** — Vitest (103 testes)
+- [x] **Testes unitários** — Vitest (107 testes)
 - [x] **Testes E2E** — Playwright (7 testes)
 - [x] **ESLint 9** — Flat config
 - [x] **Deploy Railway** — Hosting + domínio público
@@ -131,7 +138,7 @@ graph LR
 - [x] **Modo offline completo** — Tesseract como OCR principal sem API externa
 - [x] **Backup/Restore** — Exportar/importar histórico completo como JSON
 - [ ] **Multi-usuário com login** — Síndicos/funcionários com seus próprios históricos
-- [ ] **Gráfico de evolução por prédio** — Comparar consumo entre prédios ao longo dos meses
+- [x] **Dashboard geral cross-building** — Gráficos e cards comparando todos os prédios
 - [ ] **Fotos por apartamento** — Galeria organizada por prédio/andar/apto pra revisar leituras
 - [ ] **Comparar com média do prédio** — Benchmark individual vs coletivo
 
