@@ -8,7 +8,7 @@ import {
   ListNumbers, ClockCounterClockwise,
 } from '@phosphor-icons/react';
 import * as XLSX from 'xlsx';
-import { parseChat, PhotoIndexRow } from '@/lib/parseChat';
+import { parseChat, parsePhotoFiles, PhotoIndexRow } from '@/lib/parseChat';
 import { groupByApartment, ExtractResult, GroupedRow } from '@/lib/results';
 import { getCachedResult, setCachedResult } from '@/lib/cache';
 import { acquireSlot, releaseSlot } from '@/lib/rateLimit';
@@ -33,7 +33,7 @@ import PresentationMode, { PresentationToggle } from '@/components/PresentationM
 import { FadeInSection, SlideIn, StaggerChildren, StaggerItem } from '@/components/AnimatedSection';
 import BuildingSelector from '@/components/BuildingSelector';
 import BuildingManager from '@/components/BuildingManager';
-import { BuildingState, loadBuildings, migrateToBuildings } from '@/lib/building';
+import { BuildingState, loadBuildings, migrateToBuildings, getActiveBuilding } from '@/lib/building';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -159,6 +159,7 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(0);
   const [total, setTotal] = useState(0);
+  const [currentPhoto, setCurrentPhoto] = useState('');
   const [results, setResults] = useState<ExtractResult[]>([]);
   const [editingCell, setEditingCell] = useState<{ apt: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -329,14 +330,25 @@ export default function Home() {
   }, []);
 
   async function handleProcess() {
-    if (!chatFile || photoFiles.length === 0) return;
+    if (photoFiles.length === 0) return;
+    if (!chatFile && photoFiles.length === 0) return;
     setProcessing(true);
     setResults([]);
     setDone(0);
+    setCurrentPhoto('');
     cancelRef.current = false;
 
-    const chatText = await chatFile.text();
-    const index: PhotoIndexRow[] = parseChat(chatText, dateStart || undefined, dateEnd || undefined);
+    let index: PhotoIndexRow[];
+    if (chatFile) {
+      const chatText = await chatFile.text();
+      index = parseChat(chatText, dateStart || undefined, dateEnd || undefined);
+    } else {
+      const activeBuilding = getActiveBuilding(buildingState);
+      const knownApts = activeBuilding
+        ? activeBuilding.blocos.flatMap((b) => b.andares.flatMap((a) => a.apts))
+        : undefined;
+      index = parsePhotoFiles(photoFiles, knownApts);
+    }
     photoMapRef.current = new Map(photoFiles.map((f) => [f.name, f]));
     const workload = index.filter((row) => photoMapRef.current.has(row.arquivo));
     setTotal(workload.length);
@@ -357,6 +369,7 @@ export default function Home() {
       while (cursor < workload.length && !cancelRef.current) {
         const row = workload[cursor];
         cursor += 1;
+        setCurrentPhoto(row.arquivo);
         console.log(`[worker] Processando ${cursor}/${workload.length}: ${row.arquivo}`);
         if (row.flags.includes('sem_acesso')) {
           setResults((prev) => [
@@ -452,6 +465,7 @@ export default function Home() {
 
     await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
     setProcessing(false);
+    setCurrentPhoto('');
     console.log(`[worker] Processamento finalizado. Total: ${workload.length}`);
     if (!cancelRef.current) {
       playDoneSound();
@@ -461,7 +475,8 @@ export default function Home() {
   function handleSaveHistory() {
     if (groupedRows.length === 0) return;
     const label = historyLabel.trim() || new Date().toLocaleDateString('pt-BR');
-    saveToHistory(label, groupedRows);
+    const activeBuilding = getActiveBuilding(buildingState);
+    saveToHistory(label, groupedRows, undefined, activeBuilding?.id, activeBuilding?.nome);
     setHistory(getHistory());
     setHistoryLabel('');
   }
@@ -516,6 +531,8 @@ export default function Home() {
   }
 
   const handleExport = useCallback(() => {
+    const activeBuilding = getActiveBuilding(buildingState);
+    const buildingPrefix = activeBuilding ? activeBuilding.nome.replace(/\s+/g, '_') + '_' : '';
     const rows = groupedRows.map((r) => {
       const cleaned = r.consumo.replace(/[^\d\-\.]/g, '');
       const consumo = parseFloat(cleaned);
@@ -536,10 +553,12 @@ export default function Home() {
     ws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 45 }, { wch: 40 }, { wch: 45 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leituras');
-    XLSX.writeFile(wb, 'leituras_hidrometros_' + new Date().toISOString().slice(0, 10) + '.xlsx');
-  }, [groupedRows, tarifaConfig]);
+    XLSX.writeFile(wb, 'leituras_' + buildingPrefix + new Date().toISOString().slice(0, 10) + '.xlsx');
+  }, [groupedRows, tarifaConfig, buildingState]);
 
   const handleExportCsv = useCallback(() => {
+    const activeBuilding = getActiveBuilding(buildingState);
+    const buildingPrefix = activeBuilding ? activeBuilding.nome.replace(/\s+/g, '_') + '_' : '';
     const header = 'Apartamento,Indice,Consumo,Confianca,Observacao,Validacao,Arquivo(s)';
     const csvRows = groupedRows.map((r) =>
       [r.apartamento, r.indice, r.consumo, r.confianca, `"${r.observacao.replace(/"/g, '""')}"`, `"${(r.validacao || '').replace(/"/g, '""')}"`, `"${r.arquivos.replace(/"/g, '""')}"`].join(',')
@@ -549,14 +568,15 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'leituras_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'leituras_' + buildingPrefix + new Date().toISOString().slice(0, 10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
-  }, [groupedRows]);
+  }, [groupedRows, buildingState]);
 
   const handleExportPdf = useCallback(() => {
-    exportPdf(groupedRows, sharedLabel || historyLabel || undefined);
-  }, [groupedRows, sharedLabel, historyLabel]);
+    const activeBuilding = getActiveBuilding(buildingState);
+    exportPdf(groupedRows, sharedLabel || historyLabel || undefined, activeBuilding?.nome);
+  }, [groupedRows, sharedLabel, historyLabel, buildingState]);
 
   const handleShare = useCallback(async () => {
     const label = sharedLabel || historyLabel || new Date().toLocaleDateString('pt-BR');
@@ -652,7 +672,7 @@ export default function Home() {
             )}
 
             {processing && total === 0 && <SkeletonLoading />}
-            {(processing || total > 0) && <ProgressBar done={done} total={total} />}
+            {(processing || total > 0) && <ProgressBar done={done} total={total} currentPhoto={currentPhoto} />}
 
             {groupedRows.length > 0 && (
               <>
@@ -749,7 +769,7 @@ export default function Home() {
 
           {processing && total === 0 && <SkeletonLoading />}
 
-          {(processing || total > 0) && <ProgressBar done={done} total={total} />}
+          {(processing || total > 0) && <ProgressBar done={done} total={total} currentPhoto={currentPhoto} />}
 
           <AnimatePresence>
             {groupedRows.length > 0 && (
@@ -799,6 +819,7 @@ export default function Home() {
                   selectedHistoryId={selectedHistoryId}
                   historyLabel={historyLabel}
                   groupedRowsCount={groupedRows.length}
+                  buildingState={buildingState}
                   onSelect={setSelectedHistoryId}
                   onDelete={handleDeleteHistory}
                   onSave={handleSaveHistory}

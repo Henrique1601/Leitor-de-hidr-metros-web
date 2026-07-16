@@ -385,7 +385,7 @@ button.small {
 
 .history-item {
   display: grid;
-  grid-template-columns: 1fr 100px 60px 32px;
+  grid-template-columns: 1fr 120px 90px 50px 32px;
   gap: 8px;
   align-items: center;
   padding: 11px 14px;
@@ -429,6 +429,42 @@ button.small {
 .history-date {
   color: var(--text-dim);
   font-size: 12px;
+}
+
+.history-building {
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-filter {
+  margin-bottom: 8px;
+}
+
+.history-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.history-filter-select {
+  flex: 1;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.history-filter-select:focus {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .history-compare {
@@ -660,6 +696,39 @@ tbody tr.danger { background: var(--danger-dim); }
   color: var(--text-dim);
   display: flex;
   justify-content: space-between;
+}
+
+.progress-current {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-geist-mono);
+}
+
+.batch-row .batch-dropzone {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.batch-row .batch-dropzone:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.batch-dropzone-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.batch-dropzone-content label {
+  font-weight: 500;
+  color: var(--accent);
 }
 
 /* Editable Cells */

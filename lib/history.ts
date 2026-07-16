@@ -5,6 +5,8 @@ export interface HistoryEntry {
   date: string;
   label: string;
   rows: GroupedRow[];
+  buildingId?: string;
+  buildingName?: string;
 }
 
 const STORAGE_KEY = 'hidrometro-history';
@@ -19,12 +21,14 @@ export function getHistory(): HistoryEntry[] {
   }
 }
 
-export function saveToHistory(label: string, rows: GroupedRow[], originalDate?: string): HistoryEntry {
+export function saveToHistory(label: string, rows: GroupedRow[], originalDate?: string, buildingId?: string, buildingName?: string): HistoryEntry {
   const entry: HistoryEntry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     date: originalDate || new Date().toISOString(),
     label,
     rows: rows.map((r) => ({ ...r })),
+    ...(buildingId ? { buildingId } : {}),
+    ...(buildingName ? { buildingName } : {}),
   };
 
   const history = getHistory();
@@ -101,4 +105,9 @@ export function getEvolutionData(apartments: string[], periods: PeriodData[]): M
     evolution.set(apt, data);
   }
   return evolution;
+}
+
+export function getHistoryByBuilding(buildingId?: string | null): HistoryEntry[] {
+  if (!buildingId) return getHistory();
+  return getHistory().filter((e) => !e.buildingId || e.buildingId === buildingId);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseChat } from '@/lib/parseChat';
+import { parseChat, parsePhotoFiles } from '@/lib/parseChat';
 
 const SAMPLE_CHAT = `10/07/2025 9:30 da manh\u00e3 - Joao: IMG-20250710-WA0001.jpg (arquivo anexado)
 101A 102A
@@ -52,5 +52,53 @@ D401 D402
     const chat = '10/07/2025 9:30 da manh\u00e3 - Joao: Ola pessoal\n';
     const rows = parseChat(chat);
     expect(rows.length).toBe(0);
+  });
+});
+
+describe('parsePhotoFiles', () => {
+  function makeFile(name: string, size = 1000): File {
+    return new File([''], name, { type: 'image/jpeg', lastModified: Date.now() });
+  }
+
+  it('extracts apartment from numeric filename', () => {
+    const rows = parsePhotoFiles([makeFile('501.jpg')]);
+    expect(rows.length).toBe(1);
+    expect(rows[0].apartamentos).toEqual(['501']);
+    expect(rows[0].arquivo).toBe('501.jpg');
+  });
+
+  it('extracts apartment from filename with prefix', () => {
+    const rows = parsePhotoFiles([makeFile('IMG_501.jpg')]);
+    expect(rows[0].apartamentos).toEqual(['501']);
+  });
+
+  it('matches against known apartments', () => {
+    const knownApts = ['501', '502', '503'];
+    const rows = parsePhotoFiles([makeFile('501.jpg'), makeFile('999.jpg')], knownApts);
+    expect(rows[0].apartamentos).toEqual(['501']);
+    expect(rows[1].apartamentos).toEqual([]);
+    expect(rows[1].flags).toContain('sem_legenda');
+  });
+
+  it('matches by apt substring in filename', () => {
+    const knownApts = ['501', '502'];
+    const rows = parsePhotoFiles([makeFile('foto_501_cor.jpg')], knownApts);
+    expect(rows[0].apartamentos).toEqual(['501']);
+  });
+
+  it('skips non-image files', () => {
+    const txtFile = new File([''], 'notes.txt', { type: 'text/plain', lastModified: Date.now() });
+    const rows = parsePhotoFiles([txtFile]);
+    expect(rows.length).toBe(0);
+  });
+
+  it('handles multiple photos', () => {
+    const rows = parsePhotoFiles([
+      makeFile('501.jpg'),
+      makeFile('502.jpg'),
+      makeFile('503.jpg'),
+    ]);
+    expect(rows.length).toBe(3);
+    expect(rows.map((r) => r.apartamentos[0])).toEqual(['501', '502', '503']);
   });
 });

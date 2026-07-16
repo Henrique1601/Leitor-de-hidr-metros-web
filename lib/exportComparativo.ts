@@ -7,7 +7,7 @@ interface PeriodoComparacao {
   rows: GroupedRow[];
 }
 
-export function exportComparativo(periodo1: PeriodoComparacao, periodo2: PeriodoComparacao) {
+export function exportComparativo(periodo1: PeriodoComparacao, periodo2: PeriodoComparacao, buildingName?: string) {
   const doc = new jsPDF({ orientation: 'landscape' });
 
   doc.setFontSize(16);
@@ -16,7 +16,8 @@ export function exportComparativo(periodo1: PeriodoComparacao, periodo2: Periodo
   doc.setFontSize(10);
   doc.setTextColor(100);
   const dateStr = new Date().toLocaleDateString('pt-BR');
-  doc.text(`${periodo1.label}  vs  ${periodo2.label}  —  Gerado em ${dateStr}`, 14, 26);
+  const parts = [periodo1.label, periodo2.label, buildingName, `Gerado em ${dateStr}`].filter(Boolean);
+  doc.text(parts.join('  —  '), 14, 26);
 
   const map1 = new Map(periodo1.rows.map((r) => [r.apartamento, r]));
   const map2 = new Map(periodo2.rows.map((r) => [r.apartamento, r]));
@@ -86,6 +87,10 @@ export function exportComparativo(periodo1: PeriodoComparacao, periodo2: Periodo
     );
   }
 
-  const filename = `comparativo_${periodo1.label.replace(/\s+/g, '_')}_vs_${periodo2.label.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filenameParts = ['comparativo'];
+  if (buildingName) filenameParts.push(buildingName.replace(/\s+/g, '_'));
+  filenameParts.push(periodo1.label.replace(/\s+/g, '_') + '_vs_' + periodo2.label.replace(/\s+/g, '_'));
+  filenameParts.push(new Date().toISOString().slice(0, 10));
+  const filename = filenameParts.join('_') + '.pdf';
   doc.save(filename);
 }

@@ -233,3 +233,41 @@ export function parseChat(chatText: string, dateStart?: string, dateEnd?: string
 export function getChatFormat(chatText: string): ChatFormat {
   return detectFormat(chatText.split('\n'));
 }
+
+export function parsePhotoFiles(files: File[], knownApts?: string[]): PhotoIndexRow[] {
+  const aptSet = knownApts ? new Set(knownApts.map((a) => a.toUpperCase())) : null;
+  const rows: PhotoIndexRow[] = [];
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    const name = file.name.replace(/\.[^.]+$/, '');
+    const digits = name.replace(/[^0-9]/g, '');
+    let apts: string[] = [];
+
+    if (digits.length >= 3 && digits.length <= 4) {
+      const candidate = digits.toUpperCase();
+      if (!aptSet || aptSet.has(candidate)) {
+        apts = [candidate];
+      }
+    }
+
+    if (apts.length === 0 && aptSet) {
+      for (const apt of aptSet) {
+        if (name.toUpperCase().includes(apt)) {
+          apts = [apt];
+          break;
+        }
+      }
+    }
+
+    rows.push({
+      arquivo: file.name,
+      data: new Date(file.lastModified).toISOString().slice(0, 10).replace(/-/g, ''),
+      legendaBruta: '',
+      apartamentos: apts,
+      flags: apts.length === 0 ? ['sem_legenda'] : [],
+    });
+  }
+
+  return rows;
+}

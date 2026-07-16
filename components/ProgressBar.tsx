@@ -5,9 +5,10 @@ import { memo } from 'react';
 interface ProgressBarProps {
   done: number;
   total: number;
+  currentPhoto?: string;
 }
 
-function ProgressBarInner({ done, total }: ProgressBarProps) {
+function ProgressBarInner({ done, total, currentPhoto }: ProgressBarProps) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
@@ -22,6 +23,9 @@ function ProgressBarInner({ done, total }: ProgressBarProps) {
         </span>
         <span>{pct}%</span>
       </div>
+      {currentPhoto && (
+        <div className="progress-current">{currentPhoto}</div>
+      )}
     </section>
   );
 }

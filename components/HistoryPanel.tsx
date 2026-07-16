@@ -1,19 +1,22 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ArrowsLeftRight, Trash, Download, Upload, FileXls, FilePdf } from '@phosphor-icons/react';
+import { Check, ArrowsLeftRight, Trash, Download, Upload, FileXls, FilePdf, Buildings } from '@phosphor-icons/react';
 import type { HistoryEntry } from '@/lib/history';
 import { saveToHistory } from '@/lib/history';
 import { exportBackup, importBackup } from '@/lib/backup';
 import { parseXlsx } from '@/lib/importXlsx';
 import { exportComparativo } from '@/lib/exportComparativo';
+import type { BuildingState } from '@/lib/building';
+import { getActiveBuilding } from '@/lib/building';
 
 interface HistoryPanelProps {
   history: HistoryEntry[];
   selectedHistoryId: string | null;
   historyLabel: string;
   groupedRowsCount: number;
+  buildingState: BuildingState;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
   onSave: () => void;
@@ -26,6 +29,7 @@ export default function HistoryPanel({
   selectedHistoryId,
   historyLabel,
   groupedRowsCount,
+  buildingState,
   onSelect,
   onDelete,
   onSave,
@@ -35,6 +39,23 @@ export default function HistoryPanel({
   const importRef = useRef<HTMLInputElement>(null);
   const xlsxRef = useRef<HTMLInputElement>(null);
   const [compareId, setCompareId] = useState<string | null>(null);
+  const [filterBuilding, setFilterBuilding] = useState<string>('all');
+
+  const activeBuilding = getActiveBuilding(buildingState);
+
+  const filteredHistory = useMemo(() => {
+    if (filterBuilding === 'all') return history;
+    if (filterBuilding === 'none') return history.filter((e) => !e.buildingId);
+    return history.filter((e) => e.buildingId === filterBuilding);
+  }, [history, filterBuilding]);
+
+  const buildingNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const e of history) {
+      if (e.buildingId && e.buildingName) names.set(e.buildingId, e.buildingName);
+    }
+    return names;
+  }, [history]);
 
   const selectedEntry = history.find((e) => e.id === selectedHistoryId);
   const compareEntry = history.find((e) => e.id === compareId);
@@ -46,9 +67,11 @@ export default function HistoryPanel({
 
   function handleComparativo() {
     if (!selectedEntry || !compareEntry) return;
+    const buildingName = selectedEntry.buildingName || compareEntry.buildingName;
     exportComparativo(
       { label: selectedEntry.label, rows: selectedEntry.rows },
-      { label: compareEntry.label, rows: compareEntry.rows }
+      { label: compareEntry.label, rows: compareEntry.rows },
+      buildingName
     );
   }
 
@@ -140,44 +163,66 @@ export default function HistoryPanel({
         </div>
       )}
       {history.length > 0 && (
-        <div className="history-list">
-          <div className="history-item header">
-            <span>Periodo</span>
-            <span>Data</span>
-            <span>Apts</span>
-            <span title="Selecionar para comparar">Cmp</span>
-          </div>
-          <AnimatePresence mode="popLayout">
-            {history.map((entry) => {
-              const date = new Date(entry.date).toLocaleDateString('pt-BR');
-              const isSelected = selectedHistoryId === entry.id;
-              const isCompare = compareId === entry.id;
-              return (
-                <motion.div
-                  key={entry.id}
-                  layout
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  className={'history-item' + (isSelected ? ' selected' : '') + (isCompare ? ' compare' : '')}
-                  onClick={() => onSelect(isSelected ? null : entry.id)}
+        <>
+          {buildingNames.size > 0 && (
+            <div className="history-filter">
+              <label className="history-filter-label">
+                <Buildings size={14} weight="light" />
+                <select
+                  value={filterBuilding}
+                  onChange={(e) => setFilterBuilding(e.target.value)}
+                  className="history-filter-select"
                 >
-                  <span className="mono">{entry.label}</span>
-                  <span className="history-date">{date}</span>
-                  <span>{entry.rows.length}</span>
-                  <button
-                    className={'history-compare' + (isCompare ? ' active' : '')}
-                    onClick={(e) => handleCompareToggle(e, entry.id)}
-                    title="Selecionar para comparar"
+                  <option value="all">Todos os predios</option>
+                  {Array.from(buildingNames.entries()).map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                  <option value="none">Sem predio</option>
+                </select>
+              </label>
+            </div>
+          )}
+          <div className="history-list">
+            <div className="history-item header">
+              <span>Periodo</span>
+              <span>Predio</span>
+              <span>Data</span>
+              <span>Apts</span>
+              <span title="Selecionar para comparar">Cmp</span>
+            </div>
+            <AnimatePresence mode="popLayout">
+              {filteredHistory.map((entry) => {
+                const date = new Date(entry.date).toLocaleDateString('pt-BR');
+                const isSelected = selectedHistoryId === entry.id;
+                const isCompare = compareId === entry.id;
+                return (
+                  <motion.div
+                    key={entry.id}
+                    layout
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    className={'history-item' + (isSelected ? ' selected' : '') + (isCompare ? ' compare' : '')}
+                    onClick={() => onSelect(isSelected ? null : entry.id)}
                   >
-                    {isCompare ? <Check size={14} weight="bold" /> : <ArrowsLeftRight size={14} weight="light" />}
-                  </button>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+                    <span className="mono">{entry.label}</span>
+                    <span className="history-building">{entry.buildingName || '—'}</span>
+                    <span className="history-date">{date}</span>
+                    <span>{entry.rows.length}</span>
+                    <button
+                      className={'history-compare' + (isCompare ? ' active' : '')}
+                      onClick={(e) => handleCompareToggle(e, entry.id)}
+                      title="Selecionar para comparar"
+                    >
+                      {isCompare ? <Check size={14} weight="bold" /> : <ArrowsLeftRight size={14} weight="light" />}
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        </>
       )}
       {selectedHistoryId && (
         <div className="history-hint">Consumo calculado em relacao ao periodo selecionado acima</div>

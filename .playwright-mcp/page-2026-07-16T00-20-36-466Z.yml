@@ -1,0 +1,54 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e9]:
+      - heading "1. Exporte o chat" [level=2] [ref=e13]
+      - paragraph [ref=e14]: No WhatsApp, vá no grupo do prédio, toque nos 3 pontinhos → "Mais" → "Exportar conversa" → "Sem mídia". Você vai receber um arquivo .txt.
+    - generic [ref=e15]:
+      - button "Pular" [ref=e16] [cursor=pointer]
+      - button "Próximo" [ref=e17] [cursor=pointer]
+  - button "Configurações de tema" [ref=e19] [cursor=pointer]:
+    - generic [ref=e23]: ▾
+  - button "Entrar no modo apresentação" [ref=e24] [cursor=pointer]
+  - button "Selecionar prédio" [ref=e29] [cursor=pointer]:
+    - generic [ref=e33]: Nenhum prédio
+  - main [ref=e36]:
+    - generic [ref=e37]:
+      - heading "Leitor de Hidrometros" [level=1] [ref=e40]
+      - paragraph [ref=e41]: Fotos do WhatsApp - indice de cada apartamento - planilha, sem digitar nada na mao.
+    - region "Entrada de dados" [ref=e43]:
+      - generic [ref=e44]: Entrada
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - text: Conversa exportada (.txt, com midia)
+          - generic [ref=e48]: Nenhum arquivo selecionado
+        - button "Conversa exportada (.txt, com midia)" [ref=e49]
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - text: Pasta de fotos
+          - generic [ref=e53]: Nenhuma pasta selecionada
+        - button "Pasta de fotos" [ref=e54]
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]: Data inicial (opcional)
+          - textbox "Data inicial (opcional)" [ref=e58]
+        - generic [ref=e59]:
+          - generic [ref=e60]: Data final (opcional)
+          - textbox "Data final (opcional)" [ref=e61]
+      - generic [ref=e62]:
+        - button "Processar fotos" [disabled] [ref=e63]
+        - generic "Ativar entrada manual de indices" [ref=e64] [cursor=pointer]:
+          - generic [ref=e65]:
+            - checkbox "Ativar entrada manual"
+          - generic [ref=e67]: Entrada manual
+        - generic "Modo offline — processa fotos localmente sem enviar para API" [ref=e68] [cursor=pointer]:
+          - generic [ref=e69]:
+            - checkbox "Modo offline"
+          - generic [ref=e71]: Offline
+    - region "Tarifa de agua" [ref=e73]:
+      - generic [ref=e74] [cursor=pointer]: Tarifa de agua ▼
+  - navigation "Navegação rápida" [ref=e75]:
+    - button "Início" [ref=e76]
+    - button "Tabela" [ref=e79]
+    - button "Gráficos" [ref=e82]
+    - button "Histórico" [ref=e85]
+  - alert [ref=e88]

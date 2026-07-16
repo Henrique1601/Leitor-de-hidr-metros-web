@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GroupedRow } from './results';
 
-export function exportPdf(rows: GroupedRow[], label?: string) {
+export function exportPdf(rows: GroupedRow[], label?: string, buildingName?: string) {
   const doc = new jsPDF({ orientation: rows.length > 20 ? 'landscape' : 'portrait' });
 
   doc.setFontSize(16);
@@ -11,7 +11,8 @@ export function exportPdf(rows: GroupedRow[], label?: string) {
   doc.setFontSize(10);
   doc.setTextColor(100);
   const dateStr = new Date().toLocaleDateString('pt-BR');
-  const subtitle = label ? `${label} — ${dateStr}` : dateStr;
+  const parts = [label, buildingName, dateStr].filter(Boolean);
+  const subtitle = parts.length > 0 ? parts.join(' — ') : dateStr;
   doc.text(subtitle, 14, 28);
 
   const tableRows = rows.map((r) => [
@@ -65,6 +66,10 @@ export function exportPdf(rows: GroupedRow[], label?: string) {
     );
   }
 
-  const filename = `leituras_${label ? label.replace(/\s+/g, '_') + '_' : ''}${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filenameParts = ['leituras'];
+  if (buildingName) filenameParts.push(buildingName.replace(/\s+/g, '_'));
+  if (label) filenameParts.push(label.replace(/\s+/g, '_'));
+  filenameParts.push(new Date().toISOString().slice(0, 10));
+  const filename = filenameParts.join('_') + '.pdf';
   doc.save(filename);
 }
