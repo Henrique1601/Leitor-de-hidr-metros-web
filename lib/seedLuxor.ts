@@ -1,4 +1,4 @@
-import { Building, Bloco, Andar, saveBuildings, BuildingState } from './building';
+import { Building, Bloco, Andar, BuildingState } from './building';
 
 interface UnitDef {
   apt: string;
@@ -201,6 +201,5 @@ export function seedLuxor(): BuildingState {
     buildings: [building],
     activeBuildingId: building.id,
   };
-  saveBuildings(state);
   return state;
 }

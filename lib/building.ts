@@ -23,52 +23,109 @@ export interface BuildingState {
   activeBuildingId: string | null;
 }
 
-const STORAGE_KEY = 'hidrometro-buildings';
-const HISTORY_KEY = 'hidrometro-history';
+const API_BASE = '/api';
 
-export function loadBuildings(): BuildingState {
-  if (typeof window === 'undefined') return { buildings: [], activeBuildingId: null };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { buildings: [], activeBuildingId: null };
-    return JSON.parse(raw);
-  } catch {
-    return { buildings: [], activeBuildingId: null };
-  }
-}
-
-export function saveBuildings(state: BuildingState): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-export function createBuilding(nome: string, blocos: Bloco[] = []): Building {
-  const now = new Date().toISOString();
+function dbRowToBuilding(row: { id: string; name: string; data: Record<string, unknown>; created_at: string; updated_at: string }): Building {
+  const d = row.data as Record<string, unknown>;
   return {
+    id: row.id,
+    nome: row.name,
+    blocos: (d.blocos as Bloco[]) || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function buildingToDb(b: Building) {
+  return { id: b.id, name: b.nome, data: { blocos: b.blocos } };
+}
+
+export async function fetchBuildings(): Promise<Building[]> {
+  const res = await fetch(`${API_BASE}/buildings`);
+  if (!res.ok) throw new Error('Failed to fetch buildings');
+  const rows = await res.json();
+  return rows.map(dbRowToBuilding);
+}
+
+export async function fetchActiveBuildingId(): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/settings?key=active_building_id`);
+  if (!res.ok) return null;
+  const { value } = await res.json();
+  return value === 'null' || value === null ? null : (value as string);
+}
+
+export async function setActiveBuildingId(id: string | null): Promise<void> {
+  await fetch(`${API_BASE}/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'active_building_id', value: id }),
+  });
+}
+
+export async function createBuildingApi(nome: string, blocos: Bloco[] = []): Promise<Building> {
+  const now = new Date().toISOString();
+  const building: Building = {
     id: crypto.randomUUID(),
     nome,
     blocos,
     createdAt: now,
     updatedAt: now,
   };
+  const res = await fetch(`${API_BASE}/buildings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildingToDb(building)),
+  });
+  if (!res.ok) throw new Error('Failed to create building');
+  return dbRowToBuildingAny(await res.json());
 }
 
-export function updateBuilding(building: Building, patch: Partial<Omit<Building, 'id' | 'createdAt'>>): Building {
+export async function updateBuildingApi(b: Building, patch: Partial<Omit<Building, 'id' | 'createdAt'>>): Promise<Building> {
+  const updated = { ...b, ...patch, updatedAt: new Date().toISOString() };
+  const res = await fetch(`${API_BASE}/buildings/${updated.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildingToDb(updated)),
+  });
+  if (!res.ok) throw new Error('Failed to update building');
+  return dbRowToBuildingAny(await res.json());
+}
+
+export async function deleteBuildingApi(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/buildings/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete building');
+}
+
+export async function seedBuildings(buildings: Building[]): Promise<{ created: number; skipped: number }> {
+  const res = await fetch(`${API_BASE}/buildings/seed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ buildings: buildings.map(buildingToDb) }),
+  });
+  if (!res.ok) throw new Error('Failed to seed buildings');
+  return res.json();
+}
+
+function dbRowToBuildingAny(row: Record<string, unknown>): Building {
+  const d = row.data as Record<string, unknown>;
   return {
-    ...building,
-    ...patch,
-    updatedAt: new Date().toISOString(),
+    id: row.id as string,
+    nome: row.name as string,
+    blocos: (d.blocos as Bloco[]) || [],
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
   };
 }
 
-export function deleteBuilding(state: BuildingState, id: string): BuildingState {
-  const buildings = state.buildings.filter((b) => b.id !== id);
-  const activeBuildingId = state.activeBuildingId === id ? (buildings[0]?.id ?? null) : state.activeBuildingId;
-  return { buildings, activeBuildingId };
+/* Pure functions — no I/O, no changes needed */
+
+export function createBuildingLocal(nome: string, blocos: Bloco[] = []): Building {
+  const now = new Date().toISOString();
+  return { id: crypto.randomUUID(), nome, blocos, createdAt: now, updatedAt: now };
 }
 
-export function setActiveBuilding(state: BuildingState, id: string | null): BuildingState {
-  return { ...state, activeBuildingId: id };
+export function updateBuildingLocal(building: Building, patch: Partial<Omit<Building, 'id' | 'createdAt'>>): Building {
+  return { ...building, ...patch, updatedAt: new Date().toISOString() };
 }
 
 export function getActiveBuilding(state: BuildingState): Building | null {
@@ -96,7 +153,6 @@ export function generateApts(andarNumero: number, quantidade: number, blocoNome?
 
 export function inferAndares(history: Array<{ rows: Array<{ apartamento: string; bloco: string }> }>, blocoNome: string): Andar[] {
   const andarMap = new Map<number, Set<string>>();
-
   for (const entry of history) {
     for (const row of entry.rows) {
       if (row.bloco !== blocoNome) continue;
@@ -110,7 +166,6 @@ export function inferAndares(history: Array<{ rows: Array<{ apartamento: string;
       andarMap.get(andar)!.add(apt);
     }
   }
-
   const andares: Andar[] = [];
   for (const [numero, apts] of andarMap) {
     andares.push({ numero, apts: [...apts].sort() });
@@ -120,37 +175,9 @@ export function inferAndares(history: Array<{ rows: Array<{ apartamento: string;
 
 export function inferBuildingFromHistory(history: Array<{ rows: Array<{ apartamento: string; bloco: string }> }>): Building {
   const blocoNames = [...new Set(history.flatMap((p) => p.rows.map((r) => r.bloco)))].filter(Boolean);
-
-  return createBuilding('Prédio Padrão', blocoNames.map((nome) => ({
+  return createBuildingLocal('Prédio Padrão', blocoNames.map((nome) => ({
     id: crypto.randomUUID(),
     nome,
     andares: inferAndares(history, nome),
   })));
-}
-
-interface HistoryEntry {
-  buildingId?: string;
-  rows: Array<{ apartamento: string; bloco: string }>;
-}
-
-export function migrateToBuildings(): BuildingState {
-  const existing = loadBuildings();
-  if (existing.buildings.length > 0) return existing;
-
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return { buildings: [], activeBuildingId: null };
-    const history: HistoryEntry[] = JSON.parse(raw);
-    if (!Array.isArray(history) || history.length === 0) return { buildings: [], activeBuildingId: null };
-
-    const building = inferBuildingFromHistory(history);
-    const state: BuildingState = {
-      buildings: [building],
-      activeBuildingId: building.id,
-    };
-    saveBuildings(state);
-    return state;
-  } catch {
-    return { buildings: [], activeBuildingId: null };
-  }
 }

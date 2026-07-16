@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Buildings, Check, CaretDown } from '@phosphor-icons/react'
-import { Building, BuildingState, getActiveBuilding, setActiveBuilding, saveBuildings } from '@/lib/building'
+import { Building, BuildingState, getActiveBuilding, setActiveBuildingId } from '@/lib/building'
 
 interface Props {
   state: BuildingState;
@@ -23,10 +23,11 @@ export default function BuildingSelector({ state, onChange, onManage }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  function handleSelect(id: string) {
-    const next = setActiveBuilding(state, id);
-    saveBuildings(next);
-    onChange(next);
+  async function handleSelect(id: string) {
+    try {
+      await setActiveBuildingId(id);
+    } catch { /* ignore */ }
+    onChange({ ...state, activeBuildingId: id });
     setOpen(false);
   }
 

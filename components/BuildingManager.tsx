@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, Trash } from '@phosphor-icons/react'
-import { Building, Bloco, Andar, BuildingState, createBuilding, updateBuilding, deleteBuilding, saveBuildings, totalApts, generateApts } from '@/lib/building'
+import { Building, Bloco, Andar, BuildingState, createBuildingLocal, updateBuildingLocal, deleteBuildingApi, createBuildingApi, updateBuildingApi, seedBuildings, totalApts, generateApts, fetchBuildings } from '@/lib/building'
 
 interface Props {
   state: BuildingState;
@@ -16,9 +16,28 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
   const [view, setView] = useState<View>('list');
   const [editing, setEditing] = useState<Building | null>(null);
   const [draft, setDraft] = useState<Building | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  async function handleSeedNamed(namedSeed: string) {
+    setSeeding(true);
+    try {
+      const res = await fetch('/api/buildings/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ namedSeed }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const buildings = await fetchBuildings();
+        const activeId = buildings.length > 0 ? buildings[0].id : null;
+        onChange({ buildings, activeBuildingId: activeId });
+      }
+    } catch { /* ignore */ }
+    setSeeding(false);
+  }
 
   function handleNew() {
-    const b = createBuilding('Novo Prédio');
+    const b = createBuildingLocal('Novo Prédio');
     setEditing(b);
     setDraft(b);
     setView('edit');
@@ -30,16 +49,26 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
     setView('edit');
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm('Excluir este prédio?')) return;
-    const next = deleteBuilding(state, id);
-    saveBuildings(next);
-    onChange(next);
+    try {
+      await deleteBuildingApi(id);
+    } catch { /* ignore */ }
+    const buildings = state.buildings.filter((b) => b.id !== id);
+    const activeBuildingId = state.activeBuildingId === id ? (buildings[0]?.id ?? null) : state.activeBuildingId;
+    onChange({ buildings, activeBuildingId });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!draft) return;
     const isNew = !state.buildings.find((b) => b.id === draft.id);
+    try {
+      if (isNew) {
+        await createBuildingApi(draft.nome, draft.blocos);
+      } else {
+        await updateBuildingApi(draft, { blocos: draft.blocos, nome: draft.nome });
+      }
+    } catch { /* ignore */ }
     let buildings: Building[];
     if (isNew) {
       buildings = [...state.buildings, draft];
@@ -47,9 +76,7 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
       buildings = state.buildings.map((b) => (b.id === draft.id ? draft : b));
     }
     const activeBuildingId = state.activeBuildingId ?? (isNew ? draft.id : state.activeBuildingId);
-    const next: BuildingState = { buildings, activeBuildingId };
-    saveBuildings(next);
-    onChange(next);
+    onChange({ buildings, activeBuildingId });
     setView('list');
     setEditing(null);
     setDraft(null);
@@ -142,7 +169,13 @@ export default function BuildingManager({ state, onChange, onClose }: Props) {
                   </div>
                 ))
               )}
-              <button className="primary" onClick={handleNew}>+ Novo prédio</button>
+              <button className="primary" onClick={handleNew} disabled={seeding}>+ Novo prédio</button>
+              <div className="building-dropdown-divider" style={{ margin: '8px 0' }} />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prédios prontos:</span>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button className="secondary small" onClick={() => handleSeedNamed('luxor')} disabled={seeding}>Luxor &amp; Lutecia</button>
+                <button className="secondary small" onClick={() => handleSeedNamed('acquaplay')} disabled={seeding}>Acquaplay</button>
+              </div>
             </div>
           ) : draft && (
             <div className="building-form">

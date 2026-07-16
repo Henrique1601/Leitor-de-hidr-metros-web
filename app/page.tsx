@@ -33,7 +33,7 @@ import PresentationMode, { PresentationToggle } from '@/components/PresentationM
 import { FadeInSection, SlideIn, StaggerChildren, StaggerItem } from '@/components/AnimatedSection';
 import BuildingSelector from '@/components/BuildingSelector';
 import BuildingManager from '@/components/BuildingManager';
-import { BuildingState, loadBuildings, migrateToBuildings, getActiveBuilding } from '@/lib/building';
+import { BuildingState, fetchBuildings, fetchActiveBuildingId, setActiveBuildingId, createBuildingApi, updateBuildingApi, deleteBuildingApi, seedBuildings, getActiveBuilding } from '@/lib/building';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -190,25 +190,16 @@ export default function Home() {
     setHistory(getHistory());
     setTarifaConfig(getTarifaConfig());
     if (!hasSeenOnboarding()) setShowOnboarding(true);
-    setBuildingState(migrateToBuildings());
 
-    // Expose seed function for browser console
-    if (typeof window !== 'undefined') {
-      (window as any).seedAcquaplay = async () => {
-        const { seedAcquaplay } = await import('@/lib/seedAcquaplay');
-        const state = seedAcquaplay();
-        setBuildingState(state);
-        console.log('Acquaplay seedado com sucesso!', state);
-        return state;
-      };
-      (window as any).seedLuxor = async () => {
-        const { seedLuxor } = await import('@/lib/seedLuxor');
-        const state = seedLuxor();
-        setBuildingState(state);
-        console.log('Luxor seedado com sucesso!', state);
-        return state;
-      };
-    }
+    // Load buildings from database
+    (async () => {
+      try {
+        const [buildings, activeId] = await Promise.all([fetchBuildings(), fetchActiveBuildingId()]);
+        setBuildingState({ buildings, activeBuildingId: activeId });
+      } catch {
+        setBuildingState({ buildings: [], activeBuildingId: null });
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -222,6 +213,20 @@ export default function Home() {
   useEffect(() => {
     saveColumns(columns);
   }, [columns]);
+
+  // Sync buildingState to database whenever it changes
+  const buildingSyncRef = useRef(false);
+  useEffect(() => {
+    if (!buildingSyncRef.current) {
+      buildingSyncRef.current = true;
+      return;
+    }
+    (async () => {
+      try {
+        await setActiveBuildingId(buildingState.activeBuildingId);
+      } catch { /* ignore */ }
+    })();
+  }, [buildingState.activeBuildingId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

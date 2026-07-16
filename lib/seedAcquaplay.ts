@@ -1,4 +1,4 @@
-import { Building, Bloco, Andar, saveBuildings, BuildingState } from './building';
+import { Building, Bloco, Andar, BuildingState } from './building';
 
 function makeAndares(torreName: string, aptsByFloor: Record<number, number>): Andar[] {
   const andares: Andar[] = [];
@@ -75,6 +75,5 @@ export function seedAcquaplay(): BuildingState {
     buildings: [building],
     activeBuildingId: building.id,
   };
-  saveBuildings(state);
   return state;
 }
