@@ -43,6 +43,7 @@ graph LR
 | Dashboard | Recharts 3 | `components/Dashboard.tsx` |
 | Export | SheetJS + jsPDF | `lib/exportPdf.ts` |
 | Cache | IndexedDB | `lib/cache.ts` |
+| Database | Neon PostgreSQL (serverless) | `lib/db.ts` |
 | Deploy | Railway | `.github/workflows/ci.yml` |
 
 ## Funcionalidades Implementadas
@@ -52,10 +53,10 @@ graph LR
 - [x] **Drag & drop** — Arquivo `.txt` + pasta de fotos
 - [x] **Filtro por data** — Intervalo de dias antes de processar
 - [x] **Preview de fotos** — Thumbnail ao passar mouse
+- [x] **Processamento em lote** — Selecionar `.txt` + fotos juntos, fotos sem chat (nome = apto)
 
 ### OCR Cascade
 - [x] **OCR.space** — API gratuita (25k req/més), alta precisão
-- [x] **Gemini AI** — Google Vision (requer billing habilitado)
 - [x] **Tesseract.js** — Fallback local, funciona offline
 - [x] **Remoção de prefixo data URI** — Compatibilidade entre módulos
 
@@ -73,12 +74,15 @@ graph LR
 - [x] **Agrupamento por apartamento** — Detecta divergências
 - [x] **Cores de confiança** — Verde/alta, Amarelo/média, Vermelho/baixa
 - [x] **Skeleton loading** — Animação enquanto processa
+- [x] **Filtro por prédio** — Filtrar histórico e exports por prédio ativo
 
 ### Exportação
 - [x] **XLSX** — Planilha Excel formatada
 - [x] **PDF** — Relatório com jsPDF + auto-tabela
 - [x] **CSV** — UTF-8 BOM para Excel
 - [x] **Link compartilhável** — URL encriptada com base64
+- [x] **PDF comparativo** — Comparação lado a lado de 2 períodos
+- [x] **Nome do prédio no arquivo** — Ex: `leituras_Luxor_2026-07-16.xlsx`
 
 ### Dashboard
 - [x] **Gráfico de barras** — Consumo por apartamento
@@ -96,10 +100,12 @@ graph LR
 
 ### Infraestrutura
 - [x] **CI/CD** — GitHub Actions (lint, test, build)
-- [x] **Testes unitários** — Vitest (85 testes)
+- [x] **Testes unitários** — Vitest (103 testes)
 - [x] **Testes E2E** — Playwright (7 testes)
 - [x] **ESLint 9** — Flat config
 - [x] **Deploy Railway** — Hosting + domínio público
+- [x] **Banco de dados Neon** — PostgreSQL serverless (buildings, settings)
+- [x] **API REST** — CRUD de prédios + settings via API routes
 
 ---
 
@@ -112,6 +118,12 @@ graph LR
 - [x] **Alerta de consumo anormal** — Sinalizar apês com consumo 2x acima da média (possível vazamento)
 - [x] **Relatório de comparação PDF** — PDF bonito comparando 2 períodos lado a lado
 - [x] Separar os blocos de A ao H por apartamento, por exemplo colocar primeiro do bloco A e depois B etc
+- [x] **Multi-prédio com banco Neon** — Gerenciar vários condomínios via PostgreSQL serverless
+- [x] **Exportação por prédio** — Nome do prédio no arquivo exportado + filtro no histórico
+- [x] **Processamento em lote** — Fotos sem chat, "adicionar mais fotos", progresso com nome do arquivo
+- [ ] **Relatório de consumo por apartamento** — PDF individual com histórico de leituras e consumo de cada apt
+- [ ] **Alerta de consumo anormal avançado** — Notificação visual + destaque na tabela quando consumo > 2x média
+- [ ] **Cálculo de conta d'água** — Gera valor a pagar por apartamento baseado na tarifa + hidrômetros
 
 ### 📊 Média Prioridade
 
@@ -119,6 +131,9 @@ graph LR
 - [x] **Modo offline completo** — Tesseract como OCR principal sem API externa
 - [x] **Backup/Restore** — Exportar/importar histórico completo como JSON
 - [ ] **Multi-usuário com login** — Síndicos/funcionários com seus próprios históricos
+- [ ] **Gráfico de evolução por prédio** — Comparar consumo entre prédios ao longo dos meses
+- [ ] **Fotos por apartamento** — Galeria organizada por prédio/andar/apto pra revisar leituras
+- [ ] **Comparar com média do prédio** — Benchmark individual vs coletivo
 
 ### 🚀 Baixa Prioridade
 
@@ -138,6 +153,8 @@ graph LR
 - [ ] **Voice feedback** — Leitura por voz do índice extraído (acessibilidade)
 - [ ] **Zoom na foto** — Pinch-to-zoom para verificar detalhes da imagem
 - [ ] **Modo alto contraste** — Tema acessível para deficientes visuais
+- [ ] **Swipe para corrigir** — Deslizar para aceitar/rejeitar leitura OCR no mobile
+- [ ] **Captura pela câmera** — Tirar foto direto pelo app sem exportar do WhatsApp
 
 ### 📸 Câmera & Captura
 
@@ -145,15 +162,20 @@ graph LR
 - [ ] **Multi-câmera** — Várias fotos do mesmo hidrômetro para aumentar confiança
 - [ ] **Flash automático** — Ajustar exposição para ambientes escuros
 - [ ] **OCR em tempo real** — Preview ao vivo enquanto aponta a câmera
+- [ ] **Reconhecimento de número** — Detectar automaticamente o número do apartamento na foto
+- [ ] **Overlay de guia** — Mostrar onde posicionar o hidrômetro na câmera
 
 ### 📊 Analytics & Relatórios
 
+- [ ] **Relatório individual por apartamento** — PDF com histórico de leituras, consumo mensal e tendência de cada apt
 - [ ] **Previsão de consumo** — IA prevê consumo dos próximos meses baseado no histórico
 - [ ] **Ranking de consumo** — Apartamentos que mais/menos consumiram no período
 - [ ] **Mapa de calor** — Visualização por andar/bloco com cores por consumo
 - [ ] **Comparar com média do prédio** — Benchmark individual vs coletivo
 - [ ] **Relatório automático mensal** — Gera PDF todo mês e envia por email
 - [ ] **Gráfico de tendência** — Regressão linear mostrando se consumo está subindo/descendo
+- [ ] **Comparação entre prédios** — Gráfico comparando consumo médio entre condomínios
+- [ ] **Relatório de rateio** — Quanto cada apt consumiu vs quota do rateio
 
 ### 🔔 Notificações & Automação
 
@@ -162,22 +184,33 @@ graph LR
 - [ ] **Resumo semanal por email** — Envia digest com consumo da semana
 - [ ] **Webhook** — Notifica sistemas externos quando leitura é concluída
 - [ ] **Agendamento** — Processar automaticamente em horário definido
+- [ ] **Alerta de vazamento** — Detecta consumo constante mesmo sem leitura (possível vazamento)
 
 ### 🏢 Gestão de Prédios
 
 - [x] **Multi-prédio** — Gerenciar vários condomínios no mesmo app
 - [x] **Estrutura do prédio** — Configurar andares, bloco, quantidade de apts
+- [x] **Banco Neon PostgreSQL** — Prédios salvos no banco, não no localStorage
+- [x] **Seed presets** — Botões "Luxor & Lutecia" e "Acquaplay" no BuildingManager
+- [x] **Exportação por prédio** — Nome do prédio nos arquivos + filtro no histórico
 - [ ] **Tarifa progressiva** — Configurar faixas de preço por faixa de consumo
 - [ ] **Rateio de água** — Calcular rateio comum + individual
 - [ ] **Histórico por bloco** — Agrupar por bloco além de apartamento
 - [ ] **Síndico vs Proprietário** — Dois modos de visualização com permissões diferentes
+- [ ] **Fotos por apartamento** — Galeria organizada por prédio/andar/apto
 
 ### 💰 Financeiro
 
-- [ ] **Calcular conta de água** — Integrar com tabela de tarifas da concessionária
+- [x] **Calcular conta de água** — Integrar com tabela de tarifas da concessionária
 - [ ] **Boleto automático** — Gerar cobrança por apartamento baseado no consumo
 - [ ] **Dívida ativa** — Rastrear apartamentos que não pagaram
 - [ ] **Comparar com meses anteriores** — Mostrar variação % e valor financeiro
+- [ ] **Relatório financeiro PDF** — PDF com valor a pagar por apartamento + resumo do prédio
+- [ ] **Histórico de pagamentos** — Rastrear quem pagou e quem deve
+- [ ] **Rateio de água** — Dividir consumo comum (áreas de uso comum) entre todos
+- [ ] **Tarifa progressiva** — Faixas de preço: até X m³ = R$Y, acima = R$Z
+- [ ] **Cobrança por bloco** — Calcular quanto cada bloco consumiu para rateio
+- [ ] **Nota fiscal automática** — Gerar NF para prestação de serviços
 
 ### 🔗 Integrações
 
@@ -187,6 +220,7 @@ graph LR
 - [ ] **Webhook para sistemas condominiais** — CondominioPay, iSyCred, etc
 - [ ] **Importar do Google Fotos** — Puxar fotos automaticamente
 - [ ] **Zapier/IFTTT** — Automações sem código
+- [ ] **Export para Google Drive** — Salvar PDFs e planilhas automaticamente
 
 ### 🎨 UX Premium
 
@@ -205,6 +239,8 @@ graph LR
 - [ ] **Criptografia do histórico** — Proteger dados sensíveis no localStorage
 - [ ] **Auditoria** — Log de quem alterou qual índice e quando
 - [x] **Watermark no PDF** — Marca d'água com data e hora de geração
+- [ ] **Log de alterações** — Rastrear quem mudou qual leitura e quando
+- [ ] **Backup automático** — Backup diário do banco para S3/GCS
 
 ### 🌐 Offline & Performance
 
@@ -248,5 +284,6 @@ npm run dev
 |----------|-------------|-----------|
 | `OCR_SPACE_API_KEY` | Não | OCR.space (25k req/mês grátis) |
 | `GEMINI_API_KEY` | Não | Google Gemini (requer billing) |
+| `DATABASE_URL` | Não | Neon PostgreSQL (prédios e config) |
 
-> [!tip] App funciona sem nenhuma chave — usa Tesseract.js como fallback local
+> [!tip] App funciona sem nenhuma chave — usa Tesseract.js como fallback local. DATABASE_URL opcional (prédios ficam no localStorage se não configurado)

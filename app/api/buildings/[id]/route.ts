@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBuilding, updateBuilding, deleteBuilding } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const building = await getBuilding(params.id);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllBuildings, createBuilding } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 interface SeedBuilding {
   id: string;
   name: string;
