@@ -1,6 +1,7 @@
 export interface Andar {
   numero: number;
   apts: string[];
+  metroCounts?: Record<string, number>;
 }
 
 export interface Bloco {

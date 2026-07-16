@@ -200,6 +200,13 @@ export default function Home() {
         console.log('Acquaplay seedado com sucesso!', state);
         return state;
       };
+      (window as any).seedLuxor = async () => {
+        const { seedLuxor } = await import('@/lib/seedLuxor');
+        const state = seedLuxor();
+        setBuildingState(state);
+        console.log('Luxor seedado com sucesso!', state);
+        return state;
+      };
     }
   }, []);
 
