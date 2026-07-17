@@ -34,7 +34,9 @@ import PresentationMode, { PresentationToggle } from '@/components/PresentationM
 import { FadeInSection, SlideIn, StaggerChildren, StaggerItem } from '@/components/AnimatedSection';
 import BuildingSelector from '@/components/BuildingSelector';
 import BuildingManager from '@/components/BuildingManager';
+import { EmptyState } from '@/components/EmptyState';
 import { BuildingState, fetchBuildings, fetchActiveBuildingId, setActiveBuildingId, createBuildingApi, updateBuildingApi, deleteBuildingApi, seedBuildings, getActiveBuilding } from '@/lib/building';
+import { useToast } from '@/components/Toast';
 
 const ResultsTable = dynamic(() => import('@/components/ResultsTable'), { ssr: false });
 
@@ -182,12 +184,14 @@ export default function Home() {
   const [presentationMode, setPresentationMode] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [buildingState, setBuildingState] = useState<BuildingState>({ buildings: [], activeBuildingId: null });
+  const { showToast } = useToast();
+  const [editStack, setEditStack] = useState<{ apt: string; field: string; oldValue: string; newValue: string }[]>([]);
   const [showBuildingManager, setShowBuildingManager] = useState(false);
   const [pendingApts, setPendingApts] = useState<Set<string>>(new Set());
   const [reprocessing, setReprocessing] = useState<Set<string>>(new Set());
   const cancelRef = useRef(false);
   const photoMapRef = useRef<Map<string, File>>(new Map());
-  const { theme, resolvedTheme, settings, updateSettings } = useTheme();
+  const { theme, resolvedTheme, settings, updateSettings, toggle: toggleTheme } = useTheme();
 
   useEffect(() => {
     setHistory(getHistory());
@@ -276,6 +280,52 @@ export default function Home() {
       Notification.requestPermission();
     }
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const inInput = (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA';
+
+      if (ctrl && e.key === 'z' && !e.shiftKey) {
+        if (editingCell) return;
+        e.preventDefault();
+        undoLastEdit();
+        return;
+      }
+      if (ctrl && e.key === 'e' && !e.shiftKey) {
+        e.preventDefault();
+        handleExport();
+        return;
+      }
+      if (ctrl && e.key === 'p' && !e.shiftKey) {
+        e.preventDefault();
+        handleExportPdf();
+        return;
+      }
+      if (ctrl && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        handleShare();
+        return;
+      }
+      if (ctrl && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        toggleTheme();
+        return;
+      }
+      if (!ctrl && !inInput && e.key === '/') {
+        e.preventDefault();
+        const searchInput = document.querySelector('.table-search-input') as HTMLInputElement | null;
+        if (searchInput) searchInput.focus();
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (editingCell) { setEditingCell(null); return; }
+        if (showBuildingManager) { setShowBuildingManager(false); return; }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   const previousIndices = useMemo(() => {
     if (!selectedHistoryId) return undefined;
@@ -372,10 +422,11 @@ export default function Home() {
     if (workload.length === 0) {
       setProcessing(false);
       setResults([]);
-      alert(
+      showToast(
         index.length === 0
           ? 'Nenhuma foto encontrada no chat. Verifique se o formato do arquivo .txt e compativel (WhatsApp, Telegram ou iMessage).'
-          : `Encontradas ${index.length} fotos no chat, mas nenhuma corresponde aos arquivos enviados. Envie as fotos .jpg/.png junto com o arquivo .txt do chat.`
+          : `Encontradas ${index.length} fotos no chat, mas nenhuma corresponde aos arquivos enviados. Envie as fotos .jpg/.png junto com o arquivo .txt do chat.`,
+        'warning'
       );
       return;
     }
@@ -520,6 +571,9 @@ export default function Home() {
 
   function commitEdit() {
     if (!editingCell) return;
+    const oldValue = results
+      .find((r) => r.apartamentosEsperados.includes(editingCell.apt))
+      ?.medidores[results.find((r) => r.apartamentosEsperados.includes(editingCell.apt))!.apartamentosEsperados.indexOf(editingCell.apt)]?.indiceInteiro ?? '';
     setResults((prev) => {
       const updated = prev.map((r) => {
         if (!r.apartamentosEsperados.includes(editingCell.apt)) return r;
@@ -543,7 +597,41 @@ export default function Home() {
       });
       return updated;
     });
+    if (oldValue !== editValue) {
+      const entry = { apt: editingCell.apt, field: editingCell.field, oldValue, newValue: editValue };
+      setEditStack((prev) => [...prev.slice(-9), entry]);
+      showToast(`Indice de ${editingCell.apt} alterado`, 'success', {
+        duration: 5000,
+        action: { label: 'Desfazer', onClick: () => undoEdit(entry) },
+      });
+    }
     setEditingCell(null);
+  }
+
+  function undoEdit(entry: { apt: string; field: string; oldValue: string; newValue: string }) {
+    setResults((prev) =>
+      prev.map((r) => {
+        if (!r.apartamentosEsperados.includes(entry.apt)) return r;
+        const idx = r.apartamentosEsperados.indexOf(entry.apt);
+        if (!r.medidores[idx]) return r;
+        return {
+          ...r,
+          medidores: r.medidores.map((m, i) =>
+            i === idx
+              ? { ...m, indiceInteiro: entry.oldValue, indiceDecimal: '', confianca: 'alta' as const, observacao: 'Revertido' }
+              : m
+          ),
+        };
+      })
+    );
+    setEditStack((prev) => prev.filter((e) => e !== entry));
+    showToast(`Edicao de ${entry.apt} desfeita`, 'info');
+  }
+
+  function undoLastEdit() {
+    if (editStack.length === 0) return;
+    const last = editStack[editStack.length - 1];
+    undoEdit(last);
   }
 
   function handleTogglePending(apt: string) {
@@ -640,7 +728,7 @@ export default function Home() {
   const handleExportChanged = useCallback(() => {
     const prevIdx = getLatestPreviousIndices(historyLabel);
     if (!prevIdx || prevIdx.size === 0) {
-      alert('Nenhuma leitura anterior encontrada no historico para comparar.');
+      showToast('Nenhuma leitura anterior encontrada no historico para comparar.', 'warning');
       return;
     }
     const activeBuilding = getActiveBuilding(buildingState);
@@ -650,7 +738,7 @@ export default function Home() {
       return ant && r.indice && r.indice !== ant;
     });
     if (changed.length === 0) {
-      alert('Nenhuma alteracao detectada em relacao a leitura anterior.');
+      showToast('Nenhuma alteracao detectada em relacao a leitura anterior.', 'info');
       return;
     }
     const rows = changed.map((r) => {
@@ -672,7 +760,7 @@ export default function Home() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Alterados');
     XLSX.writeFile(wb, 'alterados_' + buildingPrefix + new Date().toISOString().slice(0, 10) + '.xlsx');
-  }, [groupedRows, tarifaConfig, buildingState, historyLabel]);
+  }, [groupedRows, tarifaConfig, buildingState, historyLabel, showToast]);
 
   const handleExport = useCallback(() => {
     const activeBuilding = getActiveBuilding(buildingState);
@@ -817,6 +905,10 @@ export default function Home() {
 
             {processing && total === 0 && <SkeletonLoading />}
             {(processing || total > 0) && <ProgressBar done={done} total={total} currentPhoto={currentPhoto} />}
+
+            {groupedRows.length === 0 && !processing && total === 0 && (
+              <EmptyState />
+            )}
 
             {groupedRows.length > 0 && (
               <>

@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Warning, X, Drop, List, ArrowClockwise, CheckCircle, Hourglass } from '@phosphor-icons/react';
+import { Warning, X, Drop, List, ArrowClockwise, CheckCircle, Hourglass, MagnifyingGlass } from '@phosphor-icons/react';
 import type { GroupedRow } from '@/lib/results';
 import type { ColumnDef } from '@/lib/columns';
 import { TarifaConfig, calcularTarifa, formatarMoeda } from '@/lib/tarifa';
 import { BuildingState, getActiveBuilding } from '@/lib/building';
+import { Lightbox } from './Lightbox';
 
 type ConfFilter = 'todos' | 'alta' | 'media' | 'baixa' | 'pendente';
 
@@ -61,6 +62,9 @@ export default function ResultsTable({
 }: ResultsTableProps) {
   const [showColPicker, setShowColPicker] = useState(false);
   const [confFilter, setConfFilter] = useState<ConfFilter>('todos');
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [lightbox, setLightbox] = useState<{ images: { src: string; alt: string }[]; index: number } | null>(null);
   const hasActiveBuilding = !!getActiveBuilding(buildingState);
 
   const reviewCount = useMemo(
@@ -96,10 +100,16 @@ export default function ResultsTable({
   }, [groupedRows]);
 
   const filteredRows = useMemo(() => {
-    if (confFilter === 'todos') return groupedRows;
-    if (confFilter === 'pendente') return groupedRows.filter((r) => r.pendente);
-    return groupedRows.filter((r) => r.confianca === confFilter);
-  }, [groupedRows, confFilter]);
+    let rows = groupedRows;
+    if (confFilter !== 'todos') {
+      rows = confFilter === 'pendente' ? rows.filter((r) => r.pendente) : rows.filter((r) => r.confianca === confFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      rows = rows.filter((r) => r.apartamento.toLowerCase().includes(q) || r.bloco?.toLowerCase().includes(q));
+    }
+    return rows;
+  }, [groupedRows, confFilter, searchQuery]);
 
   const vis = useMemo(() => {
     const m: Record<string, boolean> = {};
@@ -123,6 +133,27 @@ export default function ResultsTable({
   return (
     <section className="panel" aria-label="Resultados por apartamento">
       <div className="panel-title">Resultado por apartamento</div>
+
+      <div className="table-search-row">
+        <div className="table-search">
+          <MagnifyingGlass size={15} className="table-search-icon" />
+          <input
+            ref={searchRef}
+            type="text"
+            className="table-search-input"
+            placeholder="Buscar apartamento..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Buscar apartamento"
+          />
+          {searchQuery && (
+            <button className="table-search-clear" onClick={() => setSearchQuery('')} aria-label="Limpar busca">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <span className="table-search-count">{filteredRows.length} de {groupedRows.length}</span>
+      </div>
 
       <div className="conf-filter-row">
         {filterButtons.map((f) => (
@@ -285,7 +316,30 @@ export default function ResultsTable({
                   {vis.foto && (
                     <td className="td-preview">
                       {thumbUrl && (
-                        <div className="thumb-wrap">
+                        <div
+                          className="thumb-wrap"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            const imgs = r.arquivos.split(', ').filter(Boolean).map((f) => {
+                              const src = photoPreviewMap.get(f);
+                              return src ? { src, alt: `${r.apartamento} — ${f}` } : null;
+                            }).filter(Boolean) as { src: string; alt: string }[];
+                            if (imgs.length > 0) setLightbox({ images: imgs, index: 0 });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              const imgs = r.arquivos.split(', ').filter(Boolean).map((f) => {
+                                const src = photoPreviewMap.get(f);
+                                return src ? { src, alt: `${r.apartamento} — ${f}` } : null;
+                              }).filter(Boolean) as { src: string; alt: string }[];
+                              if (imgs.length > 0) setLightbox({ images: imgs, index: 0 });
+                            }
+                          }}
+                          title="Ver foto em tamanho grande"
+                          style={{ cursor: 'zoom-in' }}
+                        >
                           <img src={thumbUrl} alt="" className="thumb" loading="lazy" />
                         </div>
                       )}
@@ -342,6 +396,12 @@ export default function ResultsTable({
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {lightbox && (
+          <Lightbox images={lightbox.images} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { memo, useMemo, useRef } from 'react';
 import { Buildings, Files, FolderOpen } from '@phosphor-icons/react';
 import { BuildingState, getActiveBuilding, totalApts } from '@/lib/building';
 import { clearCache } from '@/lib/cache';
+import { useToast } from '@/components/Toast';
 
 interface InputPanelProps {
   chatFile: File | null;
@@ -45,6 +46,7 @@ function InputPanelInner({
   onBatchFilesAdd,
 }: InputPanelProps) {
   const batchRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
   const canProcess = useMemo(() => {
     const hasInput = (chatFile && photoFiles.length > 0) || photoFiles.length > 0;
     return hasInput && !processing;
@@ -204,7 +206,7 @@ function InputPanelInner({
           title="Limpar cache de OCR — força reprocessamento das fotos"
           onClick={async () => {
             await clearCache();
-            alert('Cache de OCR limpo. As fotos serao reprocessadas na proxima leitura.');
+            showToast('Cache de OCR limpo. As fotos serao reprocessadas na proxima leitura.', 'success');
           }}
           disabled={processing}
           aria-label="Limpar cache de OCR"

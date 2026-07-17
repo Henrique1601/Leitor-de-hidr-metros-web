@@ -10,6 +10,7 @@ import { parseXlsx } from '@/lib/importXlsx';
 import { exportComparativo } from '@/lib/exportComparativo';
 import type { BuildingState } from '@/lib/building';
 import { getActiveBuilding } from '@/lib/building';
+import { useToast } from '@/components/Toast';
 
 interface HistoryPanelProps {
   history: HistoryEntry[];
@@ -40,6 +41,7 @@ export default function HistoryPanel({
   const xlsxRef = useRef<HTMLInputElement>(null);
   const [compareId, setCompareId] = useState<string | null>(null);
   const [filterBuilding, setFilterBuilding] = useState<string>('all');
+  const { showToast } = useToast();
 
   const activeBuilding = getActiveBuilding(buildingState);
 
@@ -80,9 +82,9 @@ export default function HistoryPanel({
     if (!file) return;
     const result = await importBackup(file);
     if (result.errors.length > 0) {
-      alert(`Importacao:\n- Importadas: ${result.imported}\n- Ignoradas (duplicadas): ${result.skipped}\n- Erros: ${result.errors.join('\n')}`);
+      showToast(`Importacao: ${result.imported} importadas, ${result.skipped} ignoradas, ${result.errors.length} erros`, 'warning');
     } else {
-      alert(`Importacao concluida: ${result.imported} periodo(s) importado(s), ${result.skipped} ignorado(s) (duplicados)`);
+      showToast(`Importacao concluida: ${result.imported} periodo(s) importado(s), ${result.skipped} ignorado(s)`, 'success');
     }
     onHistoryChange();
     if (importRef.current) importRef.current.value = '';
@@ -94,12 +96,12 @@ export default function HistoryPanel({
     const buffer = await file.arrayBuffer();
     const result = parseXlsx(buffer, historyLabel || file.name.replace(/\.\w+$/, ''));
     if (result.errors.length > 0) {
-      alert(`Erros na importacao:\n${result.errors.join('\n')}`);
+      showToast(`Erros na importacao: ${result.errors.join('; ')}`, 'error');
     }
     if (result.rows.length > 0) {
       saveToHistory(result.label, result.rows);
       onHistoryChange();
-      alert(`${result.rows.length} leitura(s) importada(s) de "${result.label}"`);
+      showToast(`${result.rows.length} leitura(s) importada(s) de "${result.label}"`, 'success');
     }
     if (xlsxRef.current) xlsxRef.current.value = '';
   }
